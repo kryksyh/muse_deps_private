@@ -120,7 +120,7 @@ function(build_dep)
             message(STATUS "[${BD_NAME}] fetch ${DEP_SOURCE_URL}")
             _bd_mirror(_mirror)
             _bd_fetch("${archive}" "${DEP_SOURCE_SHA256}"
-                      "${DEP_SOURCE_URL}" "${_mirror}/${BD_NAME}/${an}")
+                      "${DEP_SOURCE_URL}" "${_mirror}/${BD_NAME}-${an}")
         endif()
         set(extract "${BD_WORK}/extract")
         file(MAKE_DIRECTORY "${extract}")
