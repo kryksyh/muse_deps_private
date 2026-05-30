@@ -7,9 +7,11 @@ set(vorbis_recipe_base  "https://raw.githubusercontent.com/kryksyh/muse_deps_pri
 function(_vorbis_set_from_prefix prefix os)
     set(inc ${prefix}/include)
     if (os STREQUAL "linux")
-        set(libs ${prefix}/lib/libvorbis.so.0.4.9 ${prefix}/lib/libvorbis.so
-                 ${prefix}/lib/libvorbisenc.so.2.0.12 ${prefix}/lib/libvorbisenc.so
-                 ${prefix}/lib/libvorbisfile.so.3.3.8 ${prefix}/lib/libvorbisfile.so)
+        # include the SONAME symlinks (.so.N) — dependents (libsndfile) record
+        # those as NEEDED, so they must be linked and bundled.
+        set(libs ${prefix}/lib/libvorbis.so.0.4.9 ${prefix}/lib/libvorbis.so.0 ${prefix}/lib/libvorbis.so
+                 ${prefix}/lib/libvorbisenc.so.2.0.12 ${prefix}/lib/libvorbisenc.so.2 ${prefix}/lib/libvorbisenc.so
+                 ${prefix}/lib/libvorbisfile.so.3.3.8 ${prefix}/lib/libvorbisfile.so.3 ${prefix}/lib/libvorbisfile.so)
         set(install ${libs})
     elseif (os STREQUAL "macos")
         set(libs ${prefix}/lib/libvorbis.0.4.9.dylib ${prefix}/lib/libvorbis.dylib
