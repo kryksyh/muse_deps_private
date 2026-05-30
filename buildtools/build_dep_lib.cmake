@@ -33,7 +33,9 @@ function(build_dep)
 
     # 1. sources
     if(DEFINED DEP_FORK_GIT)
-        _bd_run(${GIT} clone --depth 1 --branch "${DEP_FORK_REF}" "${DEP_FORK_GIT}" "${SRC}")
+        # submodules carry bundled 3rdparty sources (e.g. wx's builtin zlib/expat)
+        _bd_run(${GIT} clone --depth 1 --branch "${DEP_FORK_REF}"
+                --recurse-submodules --shallow-submodules "${DEP_FORK_GIT}" "${SRC}")
     else()
         get_filename_component(an "${DEP_SOURCE_URL}" NAME)
         set(archive "${BD_WORK}/${an}")

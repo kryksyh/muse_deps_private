@@ -3,8 +3,10 @@
 # patch-only on that source). Built as wxBase only (GUI off) with builtin
 # sub-libs to avoid the png/jpeg/tiff/zlib/expat subtree.
 
-set(DEP_SOURCE_URL    "https://github.com/audacity/wxWidgets/archive/v3.1.3.1-audacity.tar.gz")
-set(DEP_SOURCE_SHA256 "bc62edab621cf0a568ce6716407d5090701c09b57335044f92066b302bb70d1d")
+# Cloned with submodules: the archive tarball omits the bundled 3rdparty
+# sources (src/zlib, src/expat, ...) that the builtin libs need.
+set(DEP_FORK_GIT "https://github.com/audacity/wxWidgets.git")
+set(DEP_FORK_REF "v3.1.3.1-audacity")
 
 set(DEP_BUILD_SYSTEM cmake)
 set(DEP_CMAKE_ARGS
