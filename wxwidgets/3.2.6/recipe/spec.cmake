@@ -24,7 +24,10 @@ set(DEP_CMAKE_ARGS
 
 # wx's bundled zlib misdetects modern macOS as classic Mac OS (TARGET_OS_MAC),
 # defining `fdopen NULL` which clobbers the SDK. No-op on Linux/Windows.
-set(DEP_PATCHES patch/0001-zlib-no-classic-mac-fdopen.patch)
+set(DEP_PATCHES
+    patch/0001-zlib-no-classic-mac-fdopen.patch
+    patch/0002-osx-cpp-as-objcxx.patch
+)
 
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES "docs/licence.txt")
