@@ -13,7 +13,7 @@ function(_bd_run)
 endfunction()
 
 function(build_dep)
-    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR" "" ${ARGN})
+    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR" "DEPENDS_PREFIXES" ${ARGN})
 
     include("${BD_RECIPE_DIR}/spec.cmake")
     find_program(GIT NAMES git REQUIRED)
@@ -59,7 +59,12 @@ function(build_dep)
         set(cfg -S "${SRC}" -B "${BUILD}" -G Ninja
                 -DCMAKE_BUILD_TYPE=RelWithDebInfo
                 -DCMAKE_INSTALL_PREFIX=${INSTALL}
+                -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # allow pre-3.5 projects under CMake 4
                 ${DEP_CMAKE_ARGS})
+        if(BD_DEPENDS_PREFIXES)
+            string(REPLACE ";" "\\;" _pp "${BD_DEPENDS_PREFIXES}")
+            list(APPEND cfg "-DCMAKE_PREFIX_PATH=${_pp}")
+        endif()
         if(BD_OS STREQUAL "macos")
             if(BD_ARCH STREQUAL "universal")
                 set(osx "x86_64;arm64")
@@ -78,8 +83,8 @@ function(build_dep)
         _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config RelWithDebInfo --target install --parallel)
     endif()
 
-    # build-system metadata the consumers never reference
-    file(REMOVE_RECURSE "${INSTALL}/lib/pkgconfig" "${INSTALL}/lib/cmake")
+    # lib/cmake is kept so dependents can find_package() this dep; pkgconfig dropped
+    file(REMOVE_RECURSE "${INSTALL}/lib/pkgconfig")
     if(DEFINED DEP_LICENSE_FILES)
         file(MAKE_DIRECTORY "${INSTALL}/licenses")
         foreach(lf ${DEP_LICENSE_FILES})
