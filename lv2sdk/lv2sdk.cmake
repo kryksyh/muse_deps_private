@@ -1,37 +1,124 @@
-# Consume metadata for the LV2 host stack (source-delivery dep). Unlike the
-# codecs, there is no prebuilt library and no system mode: muse_deps ships the
-# pinned sources of lv2/lilv/zix/serd/sord/sratom/suil as one archive, and the
-# consumer amalgamates them in-tree. Single entrypoint: _PopulateSource.
+# Consume metadata for the LV2 host stack (source-delivery dep). No prebuilt
+# library and no system mode: the consumer amalgamates these sources in-tree.
+# Each lib is a pristine upstream tarball verified by SHA-256; lv2 itself is a
+# pinned, verified git commit. Sources are fetched cache-first into
+# <cache>/downloads/lv2sdk/ and extracted into the consumer's build tree.
 
-# Downloads + extracts the source bundle into local_path, then exposes the
-# extracted root as the lv2sdk_SOURCE_DIR global (contains lv2/, lilv/, ...).
-function(lv2sdk_PopulateSource local_path version)
+set(lv2sdk_recipe_base "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
 
-    # Already populated (e.g. vendored into a release source tarball): use it.
-    if (NOT EXISTS "${local_path}/.populated")
-        set(name "lv2sdk-${version}-src")
-        set(url "https://github.com/kryksyh/muse_deps_private/releases/download/lv2sdk-${version}/${name}.7z")
+# Pristine source cache root: $MUSE_DEPS_CACHE, else XDG, else ~/.cache.
+function(_lv2sdk_cache out)
+    if(DEFINED ENV{MUSE_DEPS_CACHE})
+        set(${out} "$ENV{MUSE_DEPS_CACHE}" PARENT_SCOPE)
+    elseif(DEFINED ENV{XDG_CACHE_HOME})
+        set(${out} "$ENV{XDG_CACHE_HOME}/muse_deps" PARENT_SCOPE)
+    else()
+        set(${out} "$ENV{HOME}/.cache/muse_deps" PARENT_SCOPE)
+    endif()
+endfunction()
 
-        if (NOT EXISTS "${local_path}/${name}.7z")
-            file(MAKE_DIRECTORY "${local_path}")
-            message(STATUS "[lv2sdk] source: ${url}")
-            file(DOWNLOAD "${url}" "${local_path}/${name}.7z" STATUS st)
-            list(GET st 0 code)
-            if (NOT code EQUAL 0)
-                message(FATAL_ERROR "[lv2sdk] source download failed (${st})")
+# Load DEP_SOURCES from the recipe (cache-first) into the caller's scope.
+macro(_lv2sdk_load_sources dl version)
+    if(NOT EXISTS "${dl}/sources.cmake")
+        file(MAKE_DIRECTORY "${dl}")
+        file(DOWNLOAD "${lv2sdk_recipe_base}/lv2sdk/${version}/recipe/sources.cmake"
+             "${dl}/sources.cmake" HTTPHEADER "Cache-Control: no-cache" STATUS _st)
+        list(GET _st 0 _c)
+        if(NOT _c EQUAL 0)
+            message(FATAL_ERROR "[lv2sdk] cannot fetch sources recipe (${_st})")
+        endif()
+    endif()
+    include("${dl}/sources.cmake")
+endmacro()
+
+# Ensure one source is present in the cache (cache-first, verified).
+function(_lv2sdk_fetch dl entry)
+    string(REPLACE "|" ";" f "${entry}")
+    list(GET f 0 sub)
+    list(GET f 1 kind)
+    list(GET f 2 loc)
+    list(GET f 3 ver)
+    if(kind STREQUAL "tarball")
+        get_filename_component(an "${loc}" NAME)
+        set(archive "${dl}/${an}")
+        if(EXISTS "${archive}")
+            file(SHA256 "${archive}" got)
+            if(NOT got STREQUAL "${ver}")
+                message(FATAL_ERROR "[lv2sdk] cached ${an} SHA256 mismatch: ${got} != ${ver}")
+            endif()
+        else()
+            message(STATUS "[lv2sdk] fetch ${loc}")
+            file(DOWNLOAD "${loc}" "${archive}" EXPECTED_HASH SHA256=${ver} STATUS st)
+            list(GET st 0 c)
+            if(NOT c EQUAL 0)
+                file(REMOVE "${archive}")
+                message(FATAL_ERROR "[lv2sdk] download failed: ${st}")
             endif()
         endif()
-
-        # A missing release asset yields a 404 body, not a 7z — validate the magic.
-        file(READ "${local_path}/${name}.7z" magic LIMIT 6 HEX)
-        if (NOT magic STREQUAL "377abcaf271c")
-            file(REMOVE "${local_path}/${name}.7z")
-            message(FATAL_ERROR "[lv2sdk] downloaded asset is not a 7z (release lv2sdk-${version} missing?)")
+    else() # git: clone + checkout pinned commit, verify HEAD
+        find_program(GIT NAMES git REQUIRED)
+        set(gitdir "${dl}/${sub}.git")
+        if(NOT EXISTS "${gitdir}/.git")
+            execute_process(COMMAND ${GIT} clone --quiet "${loc}" "${gitdir}" RESULT_VARIABLE rc)
+            if(rc)
+                message(FATAL_ERROR "[lv2sdk] clone failed: ${loc}")
+            endif()
         endif()
+        execute_process(COMMAND ${GIT} -C "${gitdir}" checkout --quiet "${ver}" RESULT_VARIABLE rc)
+        execute_process(COMMAND ${GIT} -C "${gitdir}" rev-parse HEAD
+                        OUTPUT_VARIABLE head OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(rc OR NOT head STREQUAL "${ver}")
+            message(FATAL_ERROR "[lv2sdk] ${sub}: HEAD ${head} != pinned ${ver}")
+        endif()
+    endif()
+endfunction()
 
-        file(ARCHIVE_EXTRACT INPUT "${local_path}/${name}.7z" DESTINATION "${local_path}")
+# Lay one cached source out as dest/<subdir>.
+function(_lv2sdk_place dl dest entry)
+    string(REPLACE "|" ";" f "${entry}")
+    list(GET f 0 sub)
+    list(GET f 1 kind)
+    list(GET f 2 loc)
+    if(EXISTS "${dest}/${sub}")
+        return()
+    endif()
+    if(kind STREQUAL "tarball")
+        get_filename_component(an "${loc}" NAME)
+        set(ex "${dest}/.ex_${sub}")
+        file(MAKE_DIRECTORY "${ex}")
+        file(ARCHIVE_EXTRACT INPUT "${dl}/${an}" DESTINATION "${ex}")
+        file(GLOB top LIST_DIRECTORIES true "${ex}/*")
+        list(GET top 0 root)
+        file(RENAME "${root}" "${dest}/${sub}")
+        file(REMOVE_RECURSE "${ex}")
+    else()
+        file(COPY "${dl}/${sub}.git/" DESTINATION "${dest}/${sub}" PATTERN ".git" EXCLUDE)
+    endif()
+endfunction()
+
+# Prefetch all sources into the cache (no extraction) — used by prepare-sources.
+function(lv2sdk_PrepareSources version)
+    _lv2sdk_cache(cache)
+    set(dl "${cache}/downloads/lv2sdk")
+    _lv2sdk_load_sources("${dl}" "${version}")
+    foreach(e ${DEP_SOURCES})
+        _lv2sdk_fetch("${dl}" "${e}")
+    endforeach()
+endfunction()
+
+# Fetch (cache-first) + extract the stack into local_path; expose lv2sdk_SOURCE_DIR
+# (contains lv2/, lilv/, zix/, serd/, sord/, sratom/, suil/).
+function(lv2sdk_PopulateSource local_path version)
+    if(NOT EXISTS "${local_path}/.populated")
+        _lv2sdk_cache(cache)
+        set(dl "${cache}/downloads/lv2sdk")
+        _lv2sdk_load_sources("${dl}" "${version}")
+        file(MAKE_DIRECTORY "${local_path}")
+        foreach(e ${DEP_SOURCES})
+            _lv2sdk_fetch("${dl}" "${e}")
+            _lv2sdk_place("${dl}" "${local_path}" "${e}")
+        endforeach()
         file(WRITE "${local_path}/.populated" "${version}\n")
     endif()
-
     set_property(GLOBAL PROPERTY lv2sdk_SOURCE_DIR "${local_path}")
 endfunction()
