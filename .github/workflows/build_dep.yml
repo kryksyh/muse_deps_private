@@ -1,0 +1,78 @@
+name: Build dependency
+
+on:
+  workflow_dispatch:
+    inputs:
+      lib:
+        description: "Dependency as name/version, e.g. opus/1.5.2"
+        required: true
+      platforms:
+        description: "all | comma list of: macos,windows,linux"
+        required: true
+        default: all
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        shell: bash
+        run: |
+          P="${{ inputs.platforms }}"
+          [ "$P" = "all" ] && P="macos,windows,linux"
+          inc=""
+          add() { inc="$inc${inc:+,}$1"; }
+          IFS=',' read -ra arr <<< "$P"
+          for p in "${arr[@]}"; do
+            case "$(echo "$p" | xargs)" in
+              linux)   add '{"os":"linux","arch":"x86_64","runner":"ubuntu-22.04"}' ;;
+              windows) add '{"os":"windows","arch":"x86_64","runner":"windows-2022"}' ;;
+              macos)   add '{"os":"macos","arch":"universal","runner":"macos-13"}' ;;
+            esac
+          done
+          echo "matrix={\"include\":[$inc]}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        if: matrix.os == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install tools (linux)
+        if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build p7zip-full
+
+      - name: Install tools (macos)
+        if: matrix.os == 'macos'
+        run: brew install ninja sevenzip
+
+      - name: Install tools (windows)
+        if: matrix.os == 'windows'
+        run: choco install ninja 7zip -y
+
+      - name: Build
+        shell: bash
+        run: cmake -DLIB=${{ inputs.lib }} -DOS=${{ matrix.os }} -DARCH=${{ matrix.arch }} -P buildtools/build_dep.cmake
+
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          lib="${{ inputs.lib }}"
+          tag="${lib%%/*}-${lib##*/}"
+          artifact="$(cat .build/last_artifact.txt)"
+          gh release view "$tag" >/dev/null 2>&1 || \
+            gh release create "$tag" --title "$tag" --notes "Prebuilt binaries for $lib"
+          gh release upload "$tag" "$artifact" --clobber

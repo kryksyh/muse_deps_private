@@ -1,0 +1,5 @@
+# macos temporary files
+.DS_Store
+
+# build_dep.cmake working tree
+.build/
