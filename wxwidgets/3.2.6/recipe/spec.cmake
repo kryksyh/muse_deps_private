@@ -15,18 +15,26 @@ set(DEP_CMAKE_ARGS
     -DwxBUILD_INSTALL=ON
     -DwxBUILD_COMPATIBILITY=3.0
     -DwxBUILD_PRECOMP=OFF
-    -DwxUSE_GUI=OFF
     -DwxUSE_WEBREQUEST=OFF
     -DwxUSE_ZLIB=builtin
     -DwxUSE_EXPAT=builtin
     -DwxUSE_REGEX=builtin
+    -DwxUSE_LIBLZMA=OFF
 )
 
-# wx's bundled zlib misdetects modern macOS as classic Mac OS (TARGET_OS_MAC),
-# defining `fdopen NULL` which clobbers the SDK. No-op on Linux/Windows.
-set(DEP_PATCHES
+# wx's macOS "base" sources require the cocoa port, which only a GUI build
+# enables — base-only does NOT compile on macOS (confirmed with a clean upstream
+# build). So build GUI on macOS (we still consume only libwx_baseu). Linux and
+# Windows build base-only (no cocoa, and we don't want a GTK dependency).
+set(DEP_CMAKE_ARGS_MACOS   -DwxUSE_GUI=ON)
+set(DEP_CMAKE_ARGS_LINUX   -DwxUSE_GUI=OFF)
+set(DEP_CMAKE_ARGS_WINDOWS -DwxUSE_GUI=OFF)
+
+# macOS-only: wx's bundled zlib/png misdetect modern macOS as classic Mac OS
+# (TARGET_OS_MAC) — zlib defines `fdopen NULL`, png includes classic <fp.h>.
+set(DEP_PATCHES_MACOS
     patch/0001-zlib-no-classic-mac-fdopen.patch
-    patch/0002-osx-cpp-as-objcxx.patch
+    patch/0002-png-no-classic-mac-fp.patch
 )
 
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")

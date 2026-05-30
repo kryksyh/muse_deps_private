@@ -24,6 +24,20 @@ function(build_dep)
     cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR" "DEPENDS_PREFIXES" ${ARGN})
 
     include("${BD_RECIPE_DIR}/spec.cmake")
+
+    # Two-level spec: merge per-OS overrides DEP_<key>_<OS> into the common keys
+    # (lists append, scalars override). No per-arch level (handled by the driver
+    # via the arch flag + archive naming).
+    string(TOUPPER "${BD_OS}" _os)
+    foreach(_k CMAKE_ARGS CONFIGURE_ARGS PATCHES DEPENDS)
+        if(DEFINED DEP_${_k}_${_os})
+            list(APPEND DEP_${_k} ${DEP_${_k}_${_os}})
+        endif()
+    endforeach()
+    if(DEFINED DEP_BUILD_SYSTEM_${_os})
+        set(DEP_BUILD_SYSTEM "${DEP_BUILD_SYSTEM_${_os}}")
+    endif()
+
     find_program(GIT NAMES git REQUIRED)
 
     set(SRC "${BD_WORK}/src")
@@ -53,12 +67,11 @@ function(build_dep)
         endif()
     endif()
 
-    # 2. patch
-    file(GLOB patches "${BD_RECIPE_DIR}/patch/*.patch")
-    list(SORT patches)
-    foreach(p ${patches})
+    # 2. patch — from the (merged) DEP_PATCHES list so OS-specific patches only
+    # apply on their OS (entries are paths relative to the recipe dir).
+    foreach(p ${DEP_PATCHES})
         message(STATUS "[${BD_NAME}] patch ${p}")
-        _bd_run(${GIT} apply --whitespace=nowarn "${p}" WORKING_DIRECTORY "${SRC}")
+        _bd_run(${GIT} apply --whitespace=nowarn "${BD_RECIPE_DIR}/${p}" WORKING_DIRECTORY "${SRC}")
     endforeach()
 
     # 3. build + install

@@ -5,8 +5,9 @@ set(DEP_SOURCE_SHA256 "ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e17
 
 set(DEP_BUILD_SYSTEM autotools)
 set(DEP_CONFIGURE_ARGS --disable-frontend)
-# macOS linker errors on lame_init_old (exported but undefined); Linux ld ignores it.
-set(DEP_PATCHES patch/0001-drop-lame_init_old-export.patch)
+# macOS-only: its linker errors on lame_init_old (exported but undefined);
+# Linux/Windows linkers ignore the missing export.
+set(DEP_PATCHES_MACOS patch/0001-drop-lame_init_old-export.patch)
 
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES COPYING)
