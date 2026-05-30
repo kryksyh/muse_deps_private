@@ -1,4 +1,4 @@
-function(libcurl_Populate remote_url local_path os arch build_type)
+function(libcurl_Populate local_path os arch build_type version)
 
     if (os STREQUAL "linux")
 
@@ -9,8 +9,8 @@ function(libcurl_Populate remote_url local_path os arch build_type)
         set(name "linux_${arch}_relwithdebinfo_${compiler}")
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[libcurl] Populate: ${remote_url}/${name} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[libcurl] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version}/${name} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
     
@@ -38,8 +38,8 @@ function(libcurl_Populate remote_url local_path os arch build_type)
         endif()
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[libcurl] Populate: ${remote_url} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[libcurl] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
 
@@ -62,8 +62,8 @@ function(libcurl_Populate remote_url local_path os arch build_type)
         set(name "windows_${arch}_${build_type}_${compiler}")
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[libcurl] Populate: ${remote_url} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[libcurl] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/libcurl-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
 
@@ -88,7 +88,7 @@ function(libcurl_Populate remote_url local_path os arch build_type)
 
 endfunction()
 
-function(libcurl_PopulateBuild remote_url local_path os arch build_type)
+function(libcurl_PopulateBuild local_path os arch build_type version)
     message(FATAL_ERROR "[libcurl] source build not yet supported. Use prebuilt or MUSE_USE_SYSTEM_LIBCURL.")
 endfunction()
 

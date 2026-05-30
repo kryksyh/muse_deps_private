@@ -2,7 +2,6 @@
 # Source build is NOT yet supported: zlib 1.2.13 fails to compile on modern clang
 # (K&R prototypes) and needs a patch. Use prebuilt or MUSE_USE_SYSTEM_ZLIB.
 
-set(zlib_release_base "https://github.com/kryksyh/muse_deps_private/releases/download/zlib-1.2.13")
 
 function(_zlib_set_from_prefix prefix os)
     set(inc ${prefix}/include)
@@ -26,7 +25,7 @@ function(_zlib_set_from_prefix prefix os)
     set_property(GLOBAL PROPERTY zlib_INSTALL_LIBRARIES ${install})
 endfunction()
 
-function(zlib_Populate remote_url local_path os arch build_type)
+function(zlib_Populate local_path os arch build_type version)
     if (os STREQUAL "macos")
         if (arch STREQUAL "x86_64")
             set(name "zlib_macos_x86_64_relwithdebinfo_appleclang15_os109")
@@ -51,8 +50,8 @@ function(zlib_Populate remote_url local_path os arch build_type)
 
     if (NOT EXISTS ${local_path}/${name}.7z)
         file(MAKE_DIRECTORY ${local_path})
-        message(STATUS "[zlib] prebuilt: ${zlib_release_base}/${name}.7z")
-        file(DOWNLOAD ${zlib_release_base}/${name}.7z ${local_path}/${name}.7z)
+        message(STATUS "[zlib] prebuilt: https://github.com/kryksyh/muse_deps_private/releases/download/zlib-${version}/${name}.7z")
+        file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/zlib-${version}/${name}.7z ${local_path}/${name}.7z)
     endif()
 
     set(valid FALSE)
@@ -76,7 +75,7 @@ function(zlib_Populate remote_url local_path os arch build_type)
     set_property(GLOBAL PROPERTY zlib_AVAILABLE TRUE)
 endfunction()
 
-function(zlib_PopulateBuild remote_url local_path os arch build_type)
+function(zlib_PopulateBuild local_path os arch build_type version)
     set(recipe_base "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
@@ -84,13 +83,13 @@ function(zlib_PopulateBuild remote_url local_path os arch build_type)
         file(DOWNLOAD ${recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${recipe_base}/zlib/1.2.13/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${recipe_base}/zlib/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     string(TOUPPER ${os} _os)
     foreach(pf ${DEP_PATCHES} ${DEP_PATCHES_${_os}})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${recipe_base}/zlib/1.2.13/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${recipe_base}/zlib/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 

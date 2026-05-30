@@ -2,7 +2,6 @@
 # consumer's populate(): _Populate (prebuilt), _PopulateBuild (from source),
 # _PopulateSystem (system-installed). All set the same opus_* globals + target.
 
-set(opus_release_base "https://github.com/kryksyh/muse_deps_private/releases/download/opus-1.5.2")
 set(opus_recipe_base  "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
 
 # Set opus_* globals + imported target from an extracted/installed prefix
@@ -37,7 +36,7 @@ endfunction()
 
 # Prebuilt. Non-fatal: if there is no release asset for this os/arch, sets
 # opus_AVAILABLE=FALSE and returns so the caller can fall back to a source build.
-function(opus_Populate remote_url local_path os arch build_type)
+function(opus_Populate local_path os arch build_type version)
 
     if (os STREQUAL "linux")
         set(name "linux_${arch}_relwithdebinfo_gcc12")
@@ -65,8 +64,8 @@ function(opus_Populate remote_url local_path os arch build_type)
 
     if (NOT EXISTS ${local_path}/${name}.7z)
         file(MAKE_DIRECTORY ${local_path})
-        message(STATUS "[opus] prebuilt: ${opus_release_base}/${name}.7z")
-        file(DOWNLOAD ${opus_release_base}/${name}.7z ${local_path}/${name}.7z)
+        message(STATUS "[opus] prebuilt: https://github.com/kryksyh/muse_deps_private/releases/download/opus-${version}/${name}.7z")
+        file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/opus-${version}/${name}.7z ${local_path}/${name}.7z)
     endif()
 
     # A missing release asset yields a 404 body, not a 7z — validate the magic.
@@ -93,7 +92,7 @@ endfunction()
 
 # Build from source (with patches) into local_path, then use it. Fetches the
 # shared driver + this dep's recipe the same way this .cmake itself is fetched.
-function(opus_PopulateBuild remote_url local_path os arch build_type)
+function(opus_PopulateBuild local_path os arch build_type version)
 
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
@@ -102,12 +101,12 @@ function(opus_PopulateBuild remote_url local_path os arch build_type)
         file(DOWNLOAD ${opus_recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${opus_recipe_base}/opus/1.5.2/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${opus_recipe_base}/opus/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     foreach(pf ${DEP_PATCHES})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${opus_recipe_base}/opus/1.5.2/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${opus_recipe_base}/opus/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 

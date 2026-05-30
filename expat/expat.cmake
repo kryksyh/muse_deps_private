@@ -2,7 +2,6 @@
 # (from source — TODO), _PopulateSystem (system).
 # NOTE: the "2.0.5" path label is historical; the actual library is expat 2.5.x.
 
-set(expat_release_base "https://github.com/kryksyh/muse_deps_private/releases/download/expat-2.0.5")
 
 function(_expat_set_from_prefix prefix os)
     set(inc ${prefix}/include)
@@ -29,7 +28,7 @@ function(_expat_set_from_prefix prefix os)
     set_property(GLOBAL PROPERTY expat_INSTALL_LIBRARIES ${install})
 endfunction()
 
-function(expat_Populate remote_url local_path os arch build_type)
+function(expat_Populate local_path os arch build_type version)
     if (os STREQUAL "linux")
         set(name "linux_${arch}_relwithdebinfo_gcc10")
     elseif (os STREQUAL "macos")
@@ -56,8 +55,8 @@ function(expat_Populate remote_url local_path os arch build_type)
 
     if (NOT EXISTS ${local_path}/${name}.7z)
         file(MAKE_DIRECTORY ${local_path})
-        message(STATUS "[expat] prebuilt: ${expat_release_base}/${name}.7z")
-        file(DOWNLOAD ${expat_release_base}/${name}.7z ${local_path}/${name}.7z)
+        message(STATUS "[expat] prebuilt: https://github.com/kryksyh/muse_deps_private/releases/download/expat-${version}/${name}.7z")
+        file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/expat-${version}/${name}.7z ${local_path}/${name}.7z)
     endif()
 
     set(valid FALSE)
@@ -81,7 +80,7 @@ function(expat_Populate remote_url local_path os arch build_type)
     set_property(GLOBAL PROPERTY expat_AVAILABLE TRUE)
 endfunction()
 
-function(expat_PopulateBuild remote_url local_path os arch build_type)
+function(expat_PopulateBuild local_path os arch build_type version)
     set(recipe_base "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
@@ -89,12 +88,12 @@ function(expat_PopulateBuild remote_url local_path os arch build_type)
         file(DOWNLOAD ${recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${recipe_base}/expat/2.0.5/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${recipe_base}/expat/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     foreach(pf ${DEP_PATCHES})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${recipe_base}/expat/2.0.5/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${recipe_base}/expat/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 

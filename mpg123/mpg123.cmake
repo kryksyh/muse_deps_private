@@ -1,4 +1,4 @@
-function(mpg123_Populate remote_url local_path os arch build_type)
+function(mpg123_Populate local_path os arch build_type version)
 
     if (os STREQUAL "linux")
 
@@ -9,8 +9,8 @@ function(mpg123_Populate remote_url local_path os arch build_type)
         set(name "linux_${arch}_relwithdebinfo_${compiler}")
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[mpg123] Populate: ${remote_url}/${name} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[mpg123] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version}/${name} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
 
@@ -37,8 +37,8 @@ function(mpg123_Populate remote_url local_path os arch build_type)
         endif()
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[mpg123] Populate: ${remote_url} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[mpg123] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
 
@@ -60,8 +60,8 @@ function(mpg123_Populate remote_url local_path os arch build_type)
         set(name "windows_${arch}_${build_type}_${compiler}")
 
         if (NOT EXISTS ${local_path}/${name}.7z)
-            message(STATUS "[mpg123] Populate: ${remote_url} to ${local_path} ${os} ${arch} ${build_type}")
-            file(DOWNLOAD ${remote_url}/${name}.7z ${local_path}/${name}.7z)
+            message(STATUS "[mpg123] Populate: https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version} to ${local_path} ${os} ${arch} ${build_type}")
+            file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/mpg123-${version}/${name}.7z ${local_path}/${name}.7z)
             file(ARCHIVE_EXTRACT INPUT ${local_path}/${name}.7z DESTINATION ${local_path})
         endif()
 
@@ -86,7 +86,7 @@ function(mpg123_Populate remote_url local_path os arch build_type)
 
 endfunction()
 
-function(mpg123_PopulateBuild remote_url local_path os arch build_type)
+function(mpg123_PopulateBuild local_path os arch build_type version)
     set(recipe_base "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
@@ -94,12 +94,12 @@ function(mpg123_PopulateBuild remote_url local_path os arch build_type)
         file(DOWNLOAD ${recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${recipe_base}/mpg123/1.31.2/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${recipe_base}/mpg123/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     foreach(pf ${DEP_PATCHES})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${recipe_base}/mpg123/1.31.2/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${recipe_base}/mpg123/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 

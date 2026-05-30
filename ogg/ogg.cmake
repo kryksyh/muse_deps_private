@@ -1,7 +1,6 @@
 # Consume metadata for ogg 1.3.5. Entrypoints: _Populate (prebuilt),
 # _PopulateBuild (from source), _PopulateSystem (system). All set ogg_* globals.
 
-set(ogg_release_base "https://github.com/kryksyh/muse_deps_private/releases/download/ogg-1.3.5")
 set(ogg_recipe_base  "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
 
 function(_ogg_set_from_prefix prefix os)
@@ -29,7 +28,7 @@ function(_ogg_set_from_prefix prefix os)
     set_property(GLOBAL PROPERTY ogg_INSTALL_LIBRARIES ${install})
 endfunction()
 
-function(ogg_Populate remote_url local_path os arch build_type)
+function(ogg_Populate local_path os arch build_type version)
     if (os STREQUAL "linux")
         set(name "linux_${arch}_relwithdebinfo_gcc10")
     elseif (os STREQUAL "macos")
@@ -56,8 +55,8 @@ function(ogg_Populate remote_url local_path os arch build_type)
 
     if (NOT EXISTS ${local_path}/${name}.7z)
         file(MAKE_DIRECTORY ${local_path})
-        message(STATUS "[ogg] prebuilt: ${ogg_release_base}/${name}.7z")
-        file(DOWNLOAD ${ogg_release_base}/${name}.7z ${local_path}/${name}.7z)
+        message(STATUS "[ogg] prebuilt: https://github.com/kryksyh/muse_deps_private/releases/download/ogg-${version}/${name}.7z")
+        file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/ogg-${version}/${name}.7z ${local_path}/${name}.7z)
     endif()
 
     set(valid FALSE)
@@ -81,19 +80,19 @@ function(ogg_Populate remote_url local_path os arch build_type)
     set_property(GLOBAL PROPERTY ogg_AVAILABLE TRUE)
 endfunction()
 
-function(ogg_PopulateBuild remote_url local_path os arch build_type)
+function(ogg_PopulateBuild local_path os arch build_type version)
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
     if (NOT EXISTS "${local_path}/build_dep_lib.cmake")
         file(DOWNLOAD ${ogg_recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${ogg_recipe_base}/ogg/1.3.5/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${ogg_recipe_base}/ogg/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     foreach(pf ${DEP_PATCHES})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${ogg_recipe_base}/ogg/1.3.5/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${ogg_recipe_base}/ogg/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 

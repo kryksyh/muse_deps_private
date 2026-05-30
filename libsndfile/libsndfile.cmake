@@ -1,7 +1,6 @@
 # Consume metadata for libsndfile 1.0.31 (depends on ogg/vorbis/flac/opus).
 # Entrypoints: _Populate (prebuilt), _PopulateBuild (from source), _PopulateSystem.
 
-set(libsndfile_release_base "https://github.com/kryksyh/muse_deps_private/releases/download/libsndfile-1.0.31")
 set(libsndfile_recipe_base  "https://raw.githubusercontent.com/kryksyh/muse_deps_private/main")
 
 function(_libsndfile_set_from_prefix prefix os)
@@ -29,7 +28,7 @@ function(_libsndfile_set_from_prefix prefix os)
     set_property(GLOBAL PROPERTY libsndfile_INSTALL_LIBRARIES ${install})
 endfunction()
 
-function(libsndfile_Populate remote_url local_path os arch build_type)
+function(libsndfile_Populate local_path os arch build_type version)
     if (os STREQUAL "linux")
         set(name "linux_${arch}_relwithdebinfo_gcc10")
     elseif (os STREQUAL "macos")
@@ -56,8 +55,8 @@ function(libsndfile_Populate remote_url local_path os arch build_type)
 
     if (NOT EXISTS ${local_path}/${name}.7z)
         file(MAKE_DIRECTORY ${local_path})
-        message(STATUS "[libsndfile] prebuilt: ${libsndfile_release_base}/${name}.7z")
-        file(DOWNLOAD ${libsndfile_release_base}/${name}.7z ${local_path}/${name}.7z)
+        message(STATUS "[libsndfile] prebuilt: https://github.com/kryksyh/muse_deps_private/releases/download/libsndfile-${version}/${name}.7z")
+        file(DOWNLOAD https://github.com/kryksyh/muse_deps_private/releases/download/libsndfile-${version}/${name}.7z ${local_path}/${name}.7z)
     endif()
 
     set(valid FALSE)
@@ -81,19 +80,19 @@ function(libsndfile_Populate remote_url local_path os arch build_type)
     set_property(GLOBAL PROPERTY libsndfile_AVAILABLE TRUE)
 endfunction()
 
-function(libsndfile_PopulateBuild remote_url local_path os arch build_type)
+function(libsndfile_PopulateBuild local_path os arch build_type version)
     set(recipe_dir "${local_path}/recipe")
     file(MAKE_DIRECTORY "${recipe_dir}/patch")
     if (NOT EXISTS "${local_path}/build_dep_lib.cmake")
         file(DOWNLOAD ${libsndfile_recipe_base}/buildtools/build_dep_lib.cmake ${local_path}/build_dep_lib.cmake)
     endif()
     if (NOT EXISTS "${recipe_dir}/spec.cmake")
-        file(DOWNLOAD ${libsndfile_recipe_base}/libsndfile/1.0.31/recipe/spec.cmake ${recipe_dir}/spec.cmake)
+        file(DOWNLOAD ${libsndfile_recipe_base}/libsndfile/${version}/recipe/spec.cmake ${recipe_dir}/spec.cmake)
     endif()
     include("${recipe_dir}/spec.cmake")
     foreach(pf ${DEP_PATCHES})
         if (NOT EXISTS "${recipe_dir}/${pf}")
-            file(DOWNLOAD ${libsndfile_recipe_base}/libsndfile/1.0.31/recipe/${pf} ${recipe_dir}/${pf})
+            file(DOWNLOAD ${libsndfile_recipe_base}/libsndfile/${version}/recipe/${pf} ${recipe_dir}/${pf})
         endif()
     endforeach()
 
