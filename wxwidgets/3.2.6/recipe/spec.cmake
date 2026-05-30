@@ -14,11 +14,17 @@ set(DEP_CMAKE_ARGS
     -DwxBUILD_DEMOS=OFF
     -DwxBUILD_INSTALL=ON
     -DwxBUILD_COMPATIBILITY=3.0
+    -DwxBUILD_PRECOMP=OFF
     -DwxUSE_GUI=OFF
+    -DwxUSE_WEBREQUEST=OFF
     -DwxUSE_ZLIB=builtin
     -DwxUSE_EXPAT=builtin
     -DwxUSE_REGEX=builtin
 )
+
+# wx's bundled zlib misdetects modern macOS as classic Mac OS (TARGET_OS_MAC),
+# defining `fdopen NULL` which clobbers the SDK. No-op on Linux/Windows.
+set(DEP_PATCHES patch/0001-zlib-no-classic-mac-fdopen.patch)
 
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES "docs/licence.txt")
