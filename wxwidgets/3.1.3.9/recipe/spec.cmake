@@ -18,9 +18,12 @@ set(DEP_CMAKE_ARGS
     -DwxBUILD_COMPATIBILITY=3.0
     -DwxUSE_GUI=OFF
     -DwxUSE_ZLIB=builtin
-    -DwxUSE_EXPAT=builtin
+    -DwxUSE_EXPAT=sys
     -DwxUSE_REGEX=builtin
 )
+# wxUSE_EXPAT=sys: the bundled expat submodule needs an entropy define wx 3.1.3's
+# glue doesn't set; system expat (libexpat1-dev) avoids it (as Audacity's Conan
+# build did). zlib/regex stay builtin (compile fine with gcc).
 
 # Linux-relevant patches (cmake fixes + C++20 deprecated-copy); macOS/Windows
 # patches from the Conan recipe are intentionally omitted here.
