@@ -28,8 +28,24 @@ set(RECIPE_DIR "${REPO_ROOT}/${LIB}/recipe")
 set(WORK "${REPO_ROOT}/.build/${NAME}/${VERSION}/${OS}_${ARCH}")
 set(INSTALL "${WORK}/install")
 
+# Build this dep's own dependencies first (DEP_DEPENDS = list of "name/version",
+# topologically ordered) into shared prefixes, accumulating CMAKE_PREFIX_PATH.
+include("${RECIPE_DIR}/spec.cmake")
+set(dep_prefixes "")
+foreach(dv ${DEP_DEPENDS})
+    string(REPLACE "/" ";" _p "${dv}")
+    list(GET _p 0 _dn)
+    set(_dprefix "${REPO_ROOT}/.build/prefixes/${_dn}")
+    message(STATUS "[${NAME}] dependency: ${dv}")
+    build_dep(NAME ${_dn} RECIPE_DIR "${REPO_ROOT}/${dv}/recipe" OS ${OS} ARCH ${ARCH}
+              BUILDTYPE ${BUILDTYPE} WORK "${REPO_ROOT}/.build/${dv}/${OS}_${ARCH}"
+              INSTALL_DIR "${_dprefix}" DEPENDS_PREFIXES "${dep_prefixes}")
+    list(APPEND dep_prefixes "${_dprefix}")
+endforeach()
+
 build_dep(NAME ${NAME} RECIPE_DIR "${RECIPE_DIR}" OS ${OS} ARCH ${ARCH}
-          BUILDTYPE ${BUILDTYPE} WORK "${WORK}" INSTALL_DIR "${INSTALL}")
+          BUILDTYPE ${BUILDTYPE} WORK "${WORK}" INSTALL_DIR "${INSTALL}"
+          DEPENDS_PREFIXES "${dep_prefixes}")
 
 # --- package ---------------------------------------------------------------
 include("${RECIPE_DIR}/spec.cmake")
