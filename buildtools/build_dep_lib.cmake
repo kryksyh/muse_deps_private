@@ -1,9 +1,24 @@
 # Core build steps, shared by the CI -P wrapper (build_dep.cmake) and consumers
 # (<name>_PopulateBuild). Include this file, then call build_dep(...).
 #
-# build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> BUILDTYPE <bt> WORK <w> INSTALL_DIR <i>)
+# build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> BUILDTYPE <bt> WORK <w> INSTALL_DIR <i> [CACHE <c>])
 #   sources -> patch -> cmake configure/build/install into INSTALL_DIR.
 #   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies <d>/patch/*.patch.
+#   Pristine source archives are fetched into a persistent, SHA-verified cache
+#   (CACHE, or $MUSE_DEPS_CACHE, or ~/.cache/muse_deps) so rebuilds and offline
+#   builds reuse them; only the extracted + patched tree and build dir are
+#   per-config (under WORK, wiped each run).
+
+# Cache root for pristine downloads: $MUSE_DEPS_CACHE, else XDG, else ~/.cache.
+function(_bd_resolve_cache out)
+    if(DEFINED ENV{MUSE_DEPS_CACHE})
+        set(${out} "$ENV{MUSE_DEPS_CACHE}" PARENT_SCOPE)
+    elseif(DEFINED ENV{XDG_CACHE_HOME})
+        set(${out} "$ENV{XDG_CACHE_HOME}/muse_deps" PARENT_SCOPE)
+    else()
+        set(${out} "$ENV{HOME}/.cache/muse_deps" PARENT_SCOPE)
+    endif()
+endfunction()
 
 function(_bd_run)
     execute_process(COMMAND ${ARGN} RESULT_VARIABLE _rc)
@@ -21,7 +36,7 @@ function(_bd_run_dir wd)
 endfunction()
 
 function(build_dep)
-    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR" "DEPENDS_PREFIXES" ${ARGN})
+    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
 
     include("${BD_RECIPE_DIR}/spec.cmake")
 
@@ -40,6 +55,10 @@ function(build_dep)
 
     find_program(GIT NAMES git REQUIRED)
 
+    if(NOT BD_CACHE)
+        _bd_resolve_cache(BD_CACHE)
+    endif()
+
     set(SRC "${BD_WORK}/src")
     set(BUILD "${BD_WORK}/build")
     file(REMOVE_RECURSE "${BD_WORK}")
@@ -51,9 +70,28 @@ function(build_dep)
         _bd_run(${GIT} clone --depth 1 --branch "${DEP_FORK_REF}"
                 --recurse-submodules --shallow-submodules "${DEP_FORK_GIT}" "${SRC}")
     else()
+        # Pristine tarball, cache-first: reuse a cached copy (re-verifying its
+        # SHA so tampering/corruption is caught), otherwise download into the
+        # cache (file(DOWNLOAD) verifies on fetch).
         get_filename_component(an "${DEP_SOURCE_URL}" NAME)
-        set(archive "${BD_WORK}/${an}")
-        file(DOWNLOAD "${DEP_SOURCE_URL}" "${archive}" EXPECTED_HASH SHA256=${DEP_SOURCE_SHA256})
+        set(dl_dir "${BD_CACHE}/downloads/${BD_NAME}")
+        set(archive "${dl_dir}/${an}")
+        if(EXISTS "${archive}")
+            file(SHA256 "${archive}" _got)
+            if(NOT _got STREQUAL "${DEP_SOURCE_SHA256}")
+                message(FATAL_ERROR "[${BD_NAME}] cached ${an} SHA256 mismatch: ${_got} != ${DEP_SOURCE_SHA256}")
+            endif()
+            message(STATUS "[${BD_NAME}] cached ${an}")
+        else()
+            file(MAKE_DIRECTORY "${dl_dir}")
+            message(STATUS "[${BD_NAME}] fetch ${DEP_SOURCE_URL}")
+            file(DOWNLOAD "${DEP_SOURCE_URL}" "${archive}" EXPECTED_HASH SHA256=${DEP_SOURCE_SHA256} STATUS _st)
+            list(GET _st 0 _code)
+            if(NOT _code EQUAL 0)
+                file(REMOVE "${archive}")
+                message(FATAL_ERROR "[${BD_NAME}] download failed: ${_st}")
+            endif()
+        endif()
         set(extract "${BD_WORK}/extract")
         file(MAKE_DIRECTORY "${extract}")
         file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${extract}")
