@@ -21,14 +21,31 @@ function(_wxwidgets_set_from_wxconfig wxconfig install_libs)
         endif()
     endforeach()
 
+    # When we built wx ourselves, link our libs by FULL PATH instead of
+    # wx-config's -L/-lwx_*: CMake only adds a dir to the consumer's RUNPATH for
+    # full-path library inputs, so this is what makes libwx_baseu resolve to our
+    # build rather than a system copy (matches how the codecs are linked). Keep
+    # wx-config's other flags (-pthread, system libs). System wx: flags as-is.
+    if (install_libs)
+        set(wx_other "")
+        foreach(f ${wx_libs_list})
+            if (NOT f MATCHES "^-L" AND NOT f MATCHES "^-lwx")
+                list(APPEND wx_other ${f})
+            endif()
+        endforeach()
+        set(link_libs ${install_libs} ${wx_other})
+    else()
+        set(link_libs ${wx_libs_list})
+    endif()
+
     if(NOT TARGET wxwidgets::wxwidgets)
        add_library(wxwidgets::wxwidgets INTERFACE IMPORTED GLOBAL)
        target_include_directories(wxwidgets::wxwidgets INTERFACE ${incs})
        target_compile_options(wxwidgets::wxwidgets INTERFACE ${opts})
-       target_link_libraries(wxwidgets::wxwidgets INTERFACE ${wx_libs_list})
+       target_link_libraries(wxwidgets::wxwidgets INTERFACE ${link_libs})
     endif()
     set_property(GLOBAL PROPERTY wxwidgets_INCLUDE_DIRS ${incs})
-    set_property(GLOBAL PROPERTY wxwidgets_LIBRARIES ${wx_libs_list})
+    set_property(GLOBAL PROPERTY wxwidgets_LIBRARIES ${link_libs})
     set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install_libs})
 endfunction()
 

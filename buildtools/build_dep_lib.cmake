@@ -249,4 +249,30 @@ function(build_dep)
             file(COPY "${SRC}/${lf}" DESTINATION "${INSTALL}/licenses")
         endforeach()
     endif()
+
+    # Linux: ensure each shared lib's SONAME symlink exists. Some builds set the
+    # soname (e.g. -Wl,-soname,libvorbis.so.0) but install only the full-version
+    # file, so dependents that record that soname as NEEDED would fall back to a
+    # system copy — breaking self-containment. Create the missing symlink.
+    if(BD_OS STREQUAL "linux")
+        find_program(READELF NAMES readelf)
+        if(READELF)
+            file(GLOB _sos "${INSTALL}/lib/*.so*")
+            foreach(_so ${_sos})
+                if(NOT IS_SYMLINK "${_so}")
+                    execute_process(COMMAND ${READELF} -d "${_so}"
+                                    OUTPUT_VARIABLE _dyn ERROR_QUIET RESULT_VARIABLE _rc)
+                    if(_rc EQUAL 0 AND _dyn MATCHES "\\(SONAME\\)[^\n]*\\[([^]]+)\\]")
+                        set(_soname "${CMAKE_MATCH_1}")
+                        get_filename_component(_dir "${_so}" DIRECTORY)
+                        get_filename_component(_base "${_so}" NAME)
+                        if(NOT _soname STREQUAL _base AND NOT EXISTS "${_dir}/${_soname}")
+                            file(CREATE_LINK "${_base}" "${_dir}/${_soname}" SYMBOLIC)
+                            message(STATUS "[${BD_NAME}] soname symlink ${_soname} -> ${_base}")
+                        endif()
+                    endif()
+                endif()
+            endforeach()
+        endif()
+    endif()
 endfunction()
