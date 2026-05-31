@@ -118,6 +118,27 @@ function(build_dep)
         set(DEP_CMAKE_SOURCE_SUBDIR "${DEP_CMAKE_SOURCE_SUBDIR_${_os}}")
     endif()
 
+    # Skip the (expensive) rebuild when the recipe inputs are unchanged — makes
+    # reconfigures fast. The signature hashes os/arch + every recipe file
+    # (spec.cmake carries the source URL+SHA and build flags; patches and
+    # build.<os>.cmake too), so any real recipe change still triggers a rebuild.
+    set(_sig "${BD_OS}|${BD_ARCH}")
+    file(GLOB_RECURSE _recipe_files "${BD_RECIPE_DIR}/*")
+    list(SORT _recipe_files)
+    foreach(_rf ${_recipe_files})
+        file(SHA256 "${_rf}" _rh)
+        string(APPEND _sig "|${_rh}")
+    endforeach()
+    string(SHA256 _build_sig "${_sig}")
+    set(_build_stamp "${BD_INSTALL_DIR}/.build_stamp")
+    if(EXISTS "${_build_stamp}")
+        file(READ "${_build_stamp}" _prev_sig)
+        if(_prev_sig STREQUAL "${_build_sig}")
+            message(STATUS "[${BD_NAME}] up-to-date (recipe unchanged) — skipping build")
+            return()
+        endif()
+    endif()
+
     find_program(GIT NAMES git REQUIRED)
 
     if(NOT BD_CACHE)
@@ -294,4 +315,7 @@ function(build_dep)
             endforeach()
         endif()
     endif()
+
+    # Record the recipe signature so an unchanged reconfigure skips the rebuild.
+    file(WRITE "${_build_stamp}" "${_build_sig}")
 endfunction()
