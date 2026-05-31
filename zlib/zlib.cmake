@@ -9,7 +9,9 @@ function(_zlib_set_from_prefix prefix os)
         set(libs ${prefix}/lib/libz.1.2.13.dylib)
         set(install ${prefix}/lib/libz.1.2.13.dylib ${prefix}/lib/libz.1.dylib ${prefix}/lib/libz.dylib)
     elseif (os STREQUAL "windows")
-        set(libs ${prefix}/lib/zdll.lib)
+        # CMake build emits zlib.lib (import) + zlib1.dll (the old zlib makefile
+        # named the import lib zdll.lib).
+        set(libs ${prefix}/lib/zlib.lib)
         set(install ${prefix}/bin/zlib1.dll)
     else()
         message(FATAL_ERROR "[zlib] Not supported os: ${os}")
