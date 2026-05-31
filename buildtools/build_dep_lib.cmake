@@ -68,6 +68,35 @@ function(_bd_run_dir wd)
     endif()
 endfunction()
 
+# Standard CMake configure + build + install of <srcdir> into INSTALL. Reads
+# BUILD/INSTALL/BD_*/DEP_CMAKE_ARGS/BD_DEPENDS_PREFIXES from the calling scope
+# (dynamic scope). Used by the default cmake build and by per-OS build.<os>.cmake
+# recipes (e.g. Windows MSVC builds of deps whose autotools path can't run).
+function(_bd_cmake_build srcdir)
+    set(cfg -S "${srcdir}" -B "${BUILD}" -G Ninja
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            -DCMAKE_INSTALL_PREFIX=${INSTALL}
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # allow pre-3.5 projects under CMake 4
+            ${DEP_CMAKE_ARGS})
+    if(BD_DEPENDS_PREFIXES)
+        string(REPLACE ";" "\\;" _pp "${BD_DEPENDS_PREFIXES}")
+        list(APPEND cfg "-DCMAKE_PREFIX_PATH=${_pp}")
+    endif()
+    if(BD_OS STREQUAL "macos")
+        if(BD_ARCH STREQUAL "universal")
+            set(osx "x86_64;arm64")
+        elseif(BD_ARCH STREQUAL "aarch64")
+            set(osx "arm64")
+        else()
+            set(osx "x86_64")
+        endif()
+        list(APPEND cfg "-DCMAKE_OSX_ARCHITECTURES=${osx}"
+                        "-DCMAKE_OSX_DEPLOYMENT_TARGET=${DEP_MACOS_DEPLOYMENT_TARGET}")
+    endif()
+    _bd_run(${CMAKE_COMMAND} ${cfg})
+    _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config RelWithDebInfo --target install --parallel)
+endfunction()
+
 function(build_dep)
     cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
 
@@ -172,32 +201,14 @@ function(build_dep)
     endforeach()
     string(REPLACE ";" ":" dep_pkgpath "${dep_pkgpaths}")
 
-    if(EXISTS "${BD_RECIPE_DIR}/build.cmake")
+    if(EXISTS "${BD_RECIPE_DIR}/build.${BD_OS}.cmake")
+        include("${BD_RECIPE_DIR}/build.${BD_OS}.cmake")  # per-OS override (e.g. Windows MSVC)
+
+    elseif(EXISTS "${BD_RECIPE_DIR}/build.cmake")
         include("${BD_RECIPE_DIR}/build.cmake")   # uses SRC, BUILD, INSTALL; must install into INSTALL
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "cmake")
-        set(cfg -S "${SRC}" -B "${BUILD}" -G Ninja
-                -DCMAKE_BUILD_TYPE=RelWithDebInfo
-                -DCMAKE_INSTALL_PREFIX=${INSTALL}
-                -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # allow pre-3.5 projects under CMake 4
-                ${DEP_CMAKE_ARGS})
-        if(BD_DEPENDS_PREFIXES)
-            string(REPLACE ";" "\\;" _pp "${BD_DEPENDS_PREFIXES}")
-            list(APPEND cfg "-DCMAKE_PREFIX_PATH=${_pp}")
-        endif()
-        if(BD_OS STREQUAL "macos")
-            if(BD_ARCH STREQUAL "universal")
-                set(osx "x86_64;arm64")
-            elseif(BD_ARCH STREQUAL "aarch64")
-                set(osx "arm64")
-            else()
-                set(osx "x86_64")
-            endif()
-            list(APPEND cfg "-DCMAKE_OSX_ARCHITECTURES=${osx}"
-                            "-DCMAKE_OSX_DEPLOYMENT_TARGET=${DEP_MACOS_DEPLOYMENT_TARGET}")
-        endif()
-        _bd_run(${CMAKE_COMMAND} ${cfg})
-        _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config RelWithDebInfo --target install --parallel)
+        _bd_cmake_build("${SRC}")
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "autotools")
         file(MAKE_DIRECTORY "${BUILD}")
