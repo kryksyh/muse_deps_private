@@ -15,7 +15,7 @@ file(WRITE "${SRC}/CMakeLists.txt"
 "add_library(opusfile STATIC src/info.c src/internal.c src/opusfile.c src/stream.c)\n"
 "target_include_directories(opusfile PRIVATE \"\${CMAKE_CURRENT_SOURCE_DIR}/include\" \"\${CMAKE_CURRENT_SOURCE_DIR}/src\"${_dep_incs})\n"
 "install(TARGETS opusfile ARCHIVE DESTINATION lib)\n"
-"install(DIRECTORY include/ DESTINATION include)\n"
+"install(FILES include/opusfile.h DESTINATION include/opus)\n"
 )
 
 _bd_cmake_build("${SRC}")
