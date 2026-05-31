@@ -114,6 +114,9 @@ function(build_dep)
     if(DEFINED DEP_BUILD_SYSTEM_${_os})
         set(DEP_BUILD_SYSTEM "${DEP_BUILD_SYSTEM_${_os}}")
     endif()
+    if(DEFINED DEP_CMAKE_SOURCE_SUBDIR_${_os})
+        set(DEP_CMAKE_SOURCE_SUBDIR "${DEP_CMAKE_SOURCE_SUBDIR_${_os}}")
+    endif()
 
     find_program(GIT NAMES git REQUIRED)
 
@@ -208,7 +211,12 @@ function(build_dep)
         include("${BD_RECIPE_DIR}/build.cmake")   # uses SRC, BUILD, INSTALL; must install into INSTALL
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "cmake")
-        _bd_cmake_build("${SRC}")
+        # Some projects keep their CMake build in a subdir (e.g. mpg123 ports/cmake).
+        set(_csrc "${SRC}")
+        if(DEP_CMAKE_SOURCE_SUBDIR)
+            set(_csrc "${SRC}/${DEP_CMAKE_SOURCE_SUBDIR}")
+        endif()
+        _bd_cmake_build("${_csrc}")
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "autotools")
         file(MAKE_DIRECTORY "${BUILD}")
