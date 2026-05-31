@@ -49,6 +49,26 @@ function(_wxwidgets_set_from_wxconfig wxconfig install_libs)
     set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install_libs})
 endfunction()
 
+# Windows has no wx-config: derive flags from the MSVC install layout directly.
+# Headers live in include/; the generated setup.h is under lib/vc_x64_dll/baseu/
+# (base-only build). Link the import libs by full path; bundle the DLLs. AU
+# already defines __WXMSW__/WXUSINGDLL/_UNICODE/wxUSE_GUI=0 itself.
+function(_wxwidgets_set_windows prefix)
+    set(incs ${prefix}/include ${prefix}/lib/vc_x64_dll/baseu)
+    set(libs ${prefix}/lib/vc_x64_dll/wxbase32u.lib
+             ${prefix}/lib/vc_x64_dll/wxbase32u_net.lib)
+    set(install ${prefix}/lib/vc_x64_dll/wxbase32u_vc_x64_custom.dll
+                ${prefix}/lib/vc_x64_dll/wxbase32u_net_vc_x64_custom.dll)
+    if(NOT TARGET wxwidgets::wxwidgets)
+       add_library(wxwidgets::wxwidgets INTERFACE IMPORTED GLOBAL)
+       target_include_directories(wxwidgets::wxwidgets INTERFACE ${incs})
+       target_link_libraries(wxwidgets::wxwidgets INTERFACE ${libs})
+    endif()
+    set_property(GLOBAL PROPERTY wxwidgets_INCLUDE_DIRS ${incs})
+    set_property(GLOBAL PROPERTY wxwidgets_LIBRARIES ${libs})
+    set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install})
+endfunction()
+
 function(wxwidgets_Populate local_path os arch build_type version)
     # No prebuilt published yet; trigger the source-build fallback.
     set_property(GLOBAL PROPERTY wxwidgets_AVAILABLE FALSE)
@@ -76,8 +96,12 @@ function(wxwidgets_PopulateBuild local_path os arch build_type version)
     build_dep(NAME wxwidgets RECIPE_DIR "${recipe_dir}" OS ${os} ARCH ${arch}
               BUILDTYPE ${build_type} WORK "${local_path}/work" INSTALL_DIR "${local_path}")
 
-    file(GLOB wx_install_libs "${local_path}/lib/libwx_baseu*")
-    _wxwidgets_set_from_wxconfig("${local_path}/bin/wx-config" "${wx_install_libs}")
+    if (os STREQUAL "windows")
+        _wxwidgets_set_windows("${local_path}")
+    else()
+        file(GLOB wx_install_libs "${local_path}/lib/libwx_baseu*")
+        _wxwidgets_set_from_wxconfig("${local_path}/bin/wx-config" "${wx_install_libs}")
+    endif()
 endfunction()
 
 function(wxwidgets_PopulateSystem)
