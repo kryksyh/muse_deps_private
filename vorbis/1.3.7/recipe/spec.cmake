@@ -1,0 +1,13 @@
+# Build recipe for vorbis 1.3.7 — read by buildtools/build_dep.cmake.
+
+set(DEP_SOURCE_URL    "https://github.com/xiph/vorbis/releases/download/v1.3.7/libvorbis-1.3.7.tar.gz")
+set(DEP_SOURCE_SHA256 "0e982409a9c3fc82ee06e08205b1355e5c6aa4c36bca58146ef399621b0ce5ab")
+
+set(DEP_DEPENDS "ogg/1.3.5")
+
+set(DEP_CMAKE_ARGS
+    -DBUILD_SHARED_LIBS=ON
+)
+
+set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
+set(DEP_LICENSE_FILES COPYING)

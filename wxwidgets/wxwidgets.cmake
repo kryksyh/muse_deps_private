@@ -1,0 +1,100 @@
+# Pinned version — single source of truth for this dep (the consumer reads it;
+# the muse_deps ref pins the whole set atomically).
+set(DEP_VERSION 3.2.6)
+
+# Consume metadata for wxWidgets (wxBase only). Non-standard layout (wx-config on
+# unix, vc_x64_dll on Windows) + compile flags -> override.
+
+# Derive flags from a wx-config. install_libs = our libs to bundle (empty = system).
+# prefix (non-empty for our own builds) relocates the baked-in paths: a prebuilt
+# wx-config has the producer's prefix compiled in, so override it to the extract dir.
+function(_wxwidgets_set_from_wxconfig wxconfig install_libs prefix)
+    set(_pfx "")
+    if (NOT "${prefix}" STREQUAL "")
+        set(_pfx --prefix=${prefix} --exec-prefix=${prefix})
+    endif()
+    execute_process(COMMAND ${wxconfig} ${_pfx} --cxxflags base OUTPUT_VARIABLE wx_cxx OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${wxconfig} ${_pfx} --libs base OUTPUT_VARIABLE wx_libs OUTPUT_STRIP_TRAILING_WHITESPACE)
+    separate_arguments(wx_cxx_list NATIVE_COMMAND "${wx_cxx}")
+    separate_arguments(wx_libs_list NATIVE_COMMAND "${wx_libs}")
+
+    set(incs "")
+    set(opts "")
+    foreach(f ${wx_cxx_list})
+        if (f MATCHES "^-I(.+)")
+            list(APPEND incs ${CMAKE_MATCH_1})
+        else()
+            list(APPEND opts ${f})
+        endif()
+    endforeach()
+
+    # Built ourselves: link our libs by FULL PATH (not wx-config's -L/-lwx_*) so
+    # CMake adds their dir to the consumer RUNPATH; keep wx-config's other flags.
+    if (install_libs)
+        set(wx_other "")
+        foreach(f ${wx_libs_list})
+            if (NOT f MATCHES "^-L" AND NOT f MATCHES "^-lwx")
+                list(APPEND wx_other ${f})
+            endif()
+        endforeach()
+        set(link_libs ${install_libs} ${wx_other})
+    else()
+        set(link_libs ${wx_libs_list})
+    endif()
+
+    if(NOT TARGET wxwidgets::wxwidgets)
+       add_library(wxwidgets::wxwidgets INTERFACE IMPORTED GLOBAL)
+       target_include_directories(wxwidgets::wxwidgets INTERFACE ${incs})
+       target_compile_options(wxwidgets::wxwidgets INTERFACE ${opts})
+       target_link_libraries(wxwidgets::wxwidgets INTERFACE ${link_libs})
+    endif()
+    set_property(GLOBAL PROPERTY wxwidgets_INCLUDE_DIRS ${incs})
+    set_property(GLOBAL PROPERTY wxwidgets_LIBRARIES ${link_libs})
+    set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install_libs})
+endfunction()
+
+# Windows has no wx-config: derive from the MSVC install layout (setup.h under
+# lib/vc_x64_dll/baseu); link the import libs by full path; bundle the DLLs.
+function(_wxwidgets_set_windows prefix)
+    set(incs ${prefix}/include ${prefix}/lib/vc_x64_dll/baseu)
+    set(libs ${prefix}/lib/vc_x64_dll/wxbase32u.lib
+             ${prefix}/lib/vc_x64_dll/wxbase32u_net.lib)
+    set(install ${prefix}/lib/vc_x64_dll/wxbase32u_vc_x64_custom.dll
+                ${prefix}/lib/vc_x64_dll/wxbase32u_net_vc_x64_custom.dll)
+    if(NOT TARGET wxwidgets::wxwidgets)
+       add_library(wxwidgets::wxwidgets INTERFACE IMPORTED GLOBAL)
+       target_include_directories(wxwidgets::wxwidgets INTERFACE ${incs})
+       target_link_libraries(wxwidgets::wxwidgets INTERFACE ${libs})
+    endif()
+    set_property(GLOBAL PROPERTY wxwidgets_INCLUDE_DIRS ${incs})
+    set_property(GLOBAL PROPERTY wxwidgets_LIBRARIES ${libs})
+    set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install})
+endfunction()
+
+function(wxwidgets_consume_override mode local_path os arch buildtype version)
+    if(mode STREQUAL "system")
+        find_program(WX_CONFIG NAMES wx-config)
+        if(NOT WX_CONFIG)
+            message(FATAL_ERROR "[wxwidgets] wx-config not found (install system wxWidgets dev package)")
+        endif()
+        _wxwidgets_set_from_wxconfig("${WX_CONFIG}" "" "")
+    else()
+        set(_ok FALSE)
+        if(NOT mode STREQUAL "rebuild")
+            _muse_fetch_prebuilt(wxwidgets "${local_path}" "${os}" "${arch}" "${version}" _ok)
+        endif()
+        if(NOT _ok)
+            _muse_build(wxwidgets "${local_path}" "${os}" "${arch}" "${buildtype}")
+        endif()
+        if(os STREQUAL "windows")
+            _wxwidgets_set_windows("${local_path}")
+        else()
+            file(GLOB wx_install_libs "${local_path}/lib/libwx_baseu*")
+            # bin/wx-config is an absolute symlink into the build prefix (dead after
+            # relocation); call the real config script and override its baked prefix.
+            file(GLOB _wxconfig "${local_path}/lib/wx/config/*")
+            list(GET _wxconfig 0 _wxconfig)
+            _wxwidgets_set_from_wxconfig("${_wxconfig}" "${wx_install_libs}" "${local_path}")
+        endif()
+    endif()
+endfunction()
