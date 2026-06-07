@@ -1,0 +1,28 @@
+name: Mirror dependency sources
+
+# Hosts every dep's pristine source tarball as assets on the `sources` release,
+# so builds can fall back to our mirror when upstream is unavailable. The asset
+# name is <name>-<archive>, matching build_dep_lib's mirror fallback URL.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage sources (download + SHA-256 verify)
+        run: cmake -P buildtools/mirror_sources.cmake
+
+      - name: Upload to the `sources` release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view sources >/dev/null 2>&1 \
+            || gh release create sources --title sources --notes "Pristine dependency source mirror"
+          gh release upload sources .build/mirror/* --clobber

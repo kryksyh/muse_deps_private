@@ -1,0 +1,98 @@
+name: Build deps release
+
+# Builds the single deps release: one per-platform prebuilt archive
+# (prebuilt-<os>-<arch>.7z, all deps) per platform + one source bundle (sources.7z,
+# offline full-source build), all published to a single release tag.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (single release for the whole dep set)"
+        required: true
+        default: deps-v1
+      platforms:
+        description: "all | comma list of: macos,windows,linux"
+        required: true
+        default: all
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "${{ inputs.tag }}" >/dev/null 2>&1 || \
+            gh release create "${{ inputs.tag }}" --title "${{ inputs.tag }}" \
+              --notes "Prebuilt per-platform dependency archives + offline source bundle."
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        shell: bash
+        run: |
+          P="${{ inputs.platforms }}"; [ "$P" = "all" ] && P="macos,windows,woa,linux,linux-arm64"
+          inc=""; add() { inc="$inc${inc:+,}$1"; }
+          IFS=',' read -ra arr <<< "$P"
+          for p in "${arr[@]}"; do case "$(echo "$p"|xargs)" in
+            linux)       add '{"os":"linux","arch":"x86_64","runner":"ubuntu-22.04"}' ;;
+            linux-arm64) add '{"os":"linux","arch":"aarch64","runner":"ubuntu-22.04-arm"}' ;;
+            windows)     add '{"os":"windows","arch":"x86_64","runner":"windows-2022"}' ;;
+            woa)         add '{"os":"windows","arch":"aarch64","runner":"windows-11-arm"}' ;;
+            macos)       add '{"os":"macos","arch":"universal","runner":"macos-13"}' ;;
+          esac; done
+          echo "matrix={\"include\":[$inc]}" >> "$GITHUB_OUTPUT"
+
+  prebuilt:
+    needs: [create-release, prepare]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.os == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
+      - if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build p7zip-full
+      - if: matrix.os == 'macos'
+        run: brew install ninja sevenzip
+      - if: matrix.os == 'windows'
+        run: choco install ninja 7zip -y
+      - name: Build platform archive
+        shell: bash
+        run: cmake -DOS=${{ matrix.os }} -DARCH=${{ matrix.arch }} -P buildtools/build_platform.cmake
+      - name: Upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ inputs.tag }}" "$(cat .build/last_platform_artifact.txt)" --clobber
+
+  source-bundle:
+    needs: create-release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y p7zip-full
+      - name: Build source bundle
+        run: cmake -P buildtools/build_source_bundle.cmake
+      - name: Upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ inputs.tag }}" sources.7z --clobber
