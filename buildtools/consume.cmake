@@ -10,6 +10,10 @@
 #   DEP_KIND              library | source | tool        (default: library)
 #   DEP_TARGET            imported target name (e.g. Opus::opus)
 #   DEP_LIBS              base lib name(s), unix (e.g. "opus", "vorbis vorbisenc vorbisfile")
+#   DEP_TARGETS           multi-target deps only: a list of "target|libs" entries
+#                         (libs space-separated), one imported target each from the
+#                         same prefix — e.g. "FLAC::FLAC|FLAC" "FLAC::FLAC++|FLAC++".
+#                         Replaces DEP_TARGET/DEP_LIBS (and DEP_SYSTEM_LIBS) when set.
 #   DEP_LIBS_WINDOWS      base lib name(s), Windows (e.g. "wavpackdll", "portaudio_x64") — defaults to DEP_LIBS
 #   DEP_STATIC_WINDOWS    ON if the Windows build is a static .lib (nothing to bundle)
 #   DEP_INCLUDE_SUBDIRS   extra include subdirs under <prefix>/include (e.g. "opus")
@@ -55,16 +59,13 @@ function(_muse_resolve_libs prefix os libnames out_link out_bundle)
     set(${out_bundle} "${bundle}" PARENT_SCOPE)
 endfunction()
 
-# Publish the standard globals + an imported INTERFACE target for a resolved dep.
-function(_muse_publish name target incdirs link bundle)
+# Create one INTERFACE imported target for a resolved (incdirs, link) pair.
+function(_muse_make_target target incdirs link)
     if(target AND NOT TARGET ${target})
         add_library(${target} INTERFACE IMPORTED GLOBAL)
         target_include_directories(${target} INTERFACE ${incdirs})
         target_link_libraries(${target} INTERFACE ${link})
     endif()
-    set_property(GLOBAL PROPERTY ${name}_INCLUDE_DIRS ${incdirs})
-    set_property(GLOBAL PROPERTY ${name}_LIBRARIES ${link})
-    set_property(GLOBAL PROPERTY ${name}_INSTALL_LIBRARIES ${bundle})
 endfunction()
 
 # include dirs for an installed prefix (include + optional DEP_INCLUDE_SUBDIRS).
@@ -90,9 +91,9 @@ endmacro()
 #   DEP_STATIC_WINDOWS  static on Windows only (shared elsewhere)
 #   DEP_LINK_DEPS       extra imported targets to add to the link interface
 #                       (e.g. a static lib that needs another dep's target)
-function(_muse_resolve_installed name prefix os)
-    _muse_incdirs("${prefix}" inc)
-    _muse_libnames("${os}" libnames)
+# Resolve <libnames> from an installed prefix into link + bundle sets, honoring
+# DEP_STATIC (fully static) / DEP_STATIC_WINDOWS (static on Windows only).
+function(_muse_resolve_prefix_libs prefix os libnames out_link out_bundle)
     if(DEP_STATIC)
         set(link "")
         set(bundle "")
@@ -109,23 +110,68 @@ function(_muse_resolve_installed name prefix os)
             set(bundle "")             # static on Windows: linked in, nothing to deploy
         endif()
     endif()
-    if(DEP_LINK_DEPS)
-        list(APPEND link ${DEP_LINK_DEPS})
-    endif()
-    _muse_publish("${name}" "${DEP_TARGET}" "${inc}" "${link}" "${bundle}")
+    set(${out_link} "${link}" PARENT_SCOPE)
+    set(${out_bundle} "${bundle}" PARENT_SCOPE)
 endfunction()
 
-# SYSTEM mode: find headers + libs on the system.
-function(_muse_resolve_system name)
-    find_path(${name}_INC NAMES ${DEP_SYSTEM_HEADER})
+# Normalize a dep's imported targets to a list of "target|libs" entries: explicit
+# DEP_TARGETS (one per line, libs space-separated), else a single entry from
+# DEP_TARGET + the given lib list (per-OS DEP_LIBS for builds, DEP_SYSTEM_LIBS for
+# system). Lets one dep expose several targets from one prefix (e.g. flac's
+# FLAC::FLAC + FLAC::FLAC++) without a custom override.
+macro(_muse_target_entries fallback_libs out)
+    if(DEFINED DEP_TARGETS)
+        set(${out} "${DEP_TARGETS}")
+    else()
+        string(REPLACE ";" " " _fl "${fallback_libs}")
+        set(${out} "${DEP_TARGET}|${_fl}")
+    endif()
+endmacro()
+
+function(_muse_resolve_installed name prefix os)
+    _muse_incdirs("${prefix}" inc)
+    _muse_libnames("${os}" libnames)
+    _muse_target_entries("${libnames}" entries)
+    set(_primary_link "")
+    set(_allbundle "")
+    set(_first TRUE)
+    foreach(_e ${entries})
+        string(REPLACE "|" ";" _kv "${_e}")
+        list(GET _kv 0 _tgt)
+        list(GET _kv 1 _libstr)
+        string(REPLACE " " ";" _libs "${_libstr}")
+        _muse_resolve_prefix_libs("${prefix}" "${os}" "${_libs}" _link _bundle)
+        if(_first AND DEP_LINK_DEPS)
+            list(APPEND _link ${DEP_LINK_DEPS})   # extra interface deps on the primary target
+        endif()
+        _muse_make_target("${_tgt}" "${inc}" "${_link}")
+        list(APPEND _allbundle ${_bundle})
+        if(_first)
+            set(_primary_link "${_link}")
+            set(_first FALSE)
+        endif()
+    endforeach()
+    set_property(GLOBAL PROPERTY ${name}_INCLUDE_DIRS ${inc})
+    set_property(GLOBAL PROPERTY ${name}_LIBRARIES ${_primary_link})
+    set_property(GLOBAL PROPERTY ${name}_INSTALL_LIBRARIES ${_allbundle})
+endfunction()
+
+# Find system libraries by base name -> absolute paths (fatal if any is missing).
+function(_muse_find_system_libs name libnames out)
     set(libs "")
-    foreach(l ${DEP_SYSTEM_LIBS})
+    foreach(l ${libnames})
         find_library(${name}_LIB_${l} NAMES ${l})
         if(NOT ${name}_LIB_${l})
             message(FATAL_ERROR "[${name}] system lib '${l}' not found (USE_SYSTEM)")
         endif()
         list(APPEND libs "${${name}_LIB_${l}}")
     endforeach()
+    set(${out} "${libs}" PARENT_SCOPE)
+endfunction()
+
+# SYSTEM mode: find headers + libs on the system.
+function(_muse_resolve_system name)
+    find_path(${name}_INC NAMES ${DEP_SYSTEM_HEADER})
     if(NOT ${name}_INC)
         message(FATAL_ERROR "[${name}] system header '${DEP_SYSTEM_HEADER}' not found (USE_SYSTEM)")
     endif()
@@ -133,7 +179,24 @@ function(_muse_resolve_system name)
     foreach(s ${DEP_INCLUDE_SUBDIRS})
         list(APPEND inc "${${name}_INC}/${s}")
     endforeach()
-    _muse_publish("${name}" "${DEP_TARGET}" "${inc}" "${libs}" "")
+    _muse_target_entries("${DEP_SYSTEM_LIBS}" entries)
+    set(_primary_libs "")
+    set(_first TRUE)
+    foreach(_e ${entries})
+        string(REPLACE "|" ";" _kv "${_e}")
+        list(GET _kv 0 _tgt)
+        list(GET _kv 1 _libstr)
+        string(REPLACE " " ";" _libs "${_libstr}")
+        _muse_find_system_libs("${name}" "${_libs}" _found)
+        _muse_make_target("${_tgt}" "${inc}" "${_found}")
+        if(_first)
+            set(_primary_libs "${_found}")
+            set(_first FALSE)
+        endif()
+    endforeach()
+    set_property(GLOBAL PROPERTY ${name}_INCLUDE_DIRS ${inc})
+    set_property(GLOBAL PROPERTY ${name}_LIBRARIES ${_primary_libs})
+    set_property(GLOBAL PROPERTY ${name}_INSTALL_LIBRARIES "")
 endfunction()
 
 # Build from source into local_path, using the already-fetched recipe + builder.
