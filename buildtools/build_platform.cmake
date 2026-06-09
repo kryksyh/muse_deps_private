@@ -1,12 +1,13 @@
-# CI / local: build EVERY buildable recipe for one platform and pack a single
-# per-platform prebuilt archive — prebuilt-<os>-<arch>.7z laid out as <name>/include,
-# <name>/lib, ... per dep, which is exactly what the consumer downloads + extracts.
+# CI / local: build every buildable recipe for one platform; pack one archive per
+# dep, named <name>-<version>-<os>-<arch>-<sig12>.7z (sig = recipe signature, so a
+# recipe change yields a new name — assets stay immutable). Writes the archives
+# plus a lock fragment (the per-dep "<name> <version> <os> <arch> <file> <sha256>"
+# lines) into .build/platform/out/.
 #
 #   cmake -DOS=macos -DARCH=universal -P buildtools/build_platform.cmake
 #
-# Source-delivery deps (no DEP_SOURCE_URL, e.g. lv2sdk) are skipped — they ship in
-# the source bundle, not the prebuilt archive. Deps are built in dependency order
-# (DEP_DEPENDS) into sibling staging prefixes.
+# Source-delivery deps ship in the source bundle and are skipped. Deps are built
+# in dependency order (DEP_DEPENDS) into sibling staging prefixes.
 
 cmake_minimum_required(VERSION 3.24)
 if(NOT DEFINED OS OR NOT DEFINED ARCH)
@@ -128,15 +129,23 @@ while(_remaining GREATER 0)
     math(EXPR _remaining "${_total} - ${_d}")
 endwhile()
 
-# Package: each dep's <name>/ subtree into one archive.
-set(OUT "${REPO_ROOT}/prebuilt-${OS}-${ARCH}.7z")
-file(REMOVE "${OUT}")
-file(GLOB _items RELATIVE "${STAGE}" "${STAGE}/*")
-message(STATUS "[platform] package ${_items} -> ${OUT}")
-execute_process(COMMAND ${SEVENZIP} a -t7z "${OUT}" ${_items}
-                WORKING_DIRECTORY "${STAGE}" RESULT_VARIABLE _rc)
-if(NOT _rc EQUAL 0)
-    message(FATAL_ERROR "[platform] package failed (${_rc})")
-endif()
-file(WRITE "${REPO_ROOT}/.build/last_platform_artifact.txt" "${OUT}")
-message(STATUS "[platform] done: ${OUT}")
+# Package: one archive per dep (prefix contents at archive root) + lock fragment.
+set(OUT_DIR "${REPO_ROOT}/.build/platform/out")
+file(REMOVE_RECURSE "${OUT_DIR}")
+file(MAKE_DIRECTORY "${OUT_DIR}")
+set(_lock "")
+foreach(_n ${ALL})
+    _bd_recipe_sig("${REPO_ROOT}/${_n}/${_VER_${_n}}/recipe" "${OS}" "${ARCH}" _sig)
+    string(SUBSTRING "${_sig}" 0 12 _sig)
+    set(_file "${_n}-${_VER_${_n}}-${OS}-${ARCH}-${_sig}.7z")
+    message(STATUS "[platform] package ${_file}")
+    execute_process(COMMAND ${SEVENZIP} a -t7z "${OUT_DIR}/${_file}" . -x!.build_stamp
+                    WORKING_DIRECTORY "${STAGE}/${_n}" RESULT_VARIABLE _rc)
+    if(NOT _rc EQUAL 0)
+        message(FATAL_ERROR "[platform] package ${_n} failed (${_rc})")
+    endif()
+    file(SHA256 "${OUT_DIR}/${_file}" _sha)
+    string(APPEND _lock "${_n} ${_VER_${_n}} ${OS} ${ARCH} ${_file} ${_sha}\n")
+endforeach()
+file(WRITE "${OUT_DIR}/prebuilt-${OS}-${ARCH}.lock" "${_lock}")
+message(STATUS "[platform] done: ${OUT_DIR}")

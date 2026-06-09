@@ -1,35 +1,20 @@
-name: Build deps release
+name: Build prebuilt deps
 
-# Builds the single deps release: one per-platform prebuilt archive
-# (prebuilt-<os>-<arch>.7z, all deps) per platform + one source bundle (sources.7z,
-# offline full-source build), all published to a single release tag.
+# Per-platform matrix: builds every recipe, packs one content-addressed archive
+# per dep, uploads them as write-once assets of the `prebuilt` release, then a
+# single collect job merges the per-platform lock fragments into prebuilt.lock
+# and commits it. Consumers pin the muse_deps commit and verify archives against
+# the lock — assets are never overwritten.
 
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Release tag (single release for the whole dep set)"
-        required: true
-        default: deps-v1
       platforms:
-        description: "all | comma list of: macos,windows,linux"
+        description: "all | comma list of: macos,windows,woa,linux,linux-arm64"
         required: true
         default: all
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release view "${{ inputs.tag }}" >/dev/null 2>&1 || \
-            gh release create "${{ inputs.tag }}" --title "${{ inputs.tag }}" \
-              --notes "Prebuilt per-platform dependency archives + offline source bundle."
-
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -46,18 +31,16 @@ jobs:
             linux-arm64) add '{"os":"linux","arch":"aarch64","runner":"ubuntu-22.04-arm"}' ;;
             windows)     add '{"os":"windows","arch":"x86_64","runner":"windows-2022"}' ;;
             woa)         add '{"os":"windows","arch":"aarch64","runner":"windows-11-arm"}' ;;
-            macos)       add '{"os":"macos","arch":"universal","runner":"macos-13"}' ;;
+            macos)       add '{"os":"macos","arch":"universal","runner":"macos-15"}' ;;
           esac; done
           echo "matrix={\"include\":[$inc]}" >> "$GITHUB_OUTPUT"
 
-  prebuilt:
-    needs: [create-release, prepare]
+  build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - if: matrix.os == 'windows'
@@ -65,26 +48,68 @@ jobs:
         with:
           arch: ${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
       - if: matrix.os == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build p7zip-full
+        run: sudo apt-get update && sudo apt-get install -y ninja-build p7zip-full libasound2-dev
       - if: matrix.os == 'macos'
         run: brew install ninja sevenzip
       - if: matrix.os == 'windows'
         run: choco install ninja 7zip -y
-      - name: Build platform archive
+      - name: Build platform deps
         shell: bash
         run: cmake -DOS=${{ matrix.os }} -DARCH=${{ matrix.arch }} -P buildtools/build_platform.cmake
-      - name: Upload
-        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: out-${{ matrix.os }}-${{ matrix.arch }}
+          path: .build/platform/out/
+          if-no-files-found: error
+
+  collect:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: out-*
+          merge-multiple: true
+          path: out
+      - name: Upload archives (write-once)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ inputs.tag }}" "$(cat .build/last_platform_artifact.txt)" --clobber
+        run: |
+          gh release view prebuilt >/dev/null 2>&1 \
+            || gh release create prebuilt --title prebuilt \
+                 --notes "Content-addressed prebuilt dependency archives; index in prebuilt.lock."
+          existing=$(gh release view prebuilt --json assets -q '.assets[].name')
+          for f in out/*.7z; do
+            name=$(basename "$f")
+            if grep -qx "$name" <<< "$existing"; then
+              echo "skip $name (already published)"
+            else
+              gh release upload prebuilt "$f"
+            fi
+          done
+      - name: Merge lock fragments and commit
+        run: |
+          for frag in out/prebuilt-*.lock; do
+            os_arch=$(basename "$frag" .lock | sed 's/^prebuilt-//')
+            os=${os_arch%-*}; arch=${os_arch##*-}
+            [ -f prebuilt.lock ] && grep -v " $os $arch " prebuilt.lock > prebuilt.lock.tmp || : > prebuilt.lock.tmp
+            cat "$frag" >> prebuilt.lock.tmp
+            sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
+          done
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add prebuilt.lock
+          git diff --cached --quiet || git commit -m "prebuilt.lock: $(ls out/prebuilt-*.lock | xargs -n1 basename | sed 's/^prebuilt-//;s/.lock$//' | paste -sd, -)"
+          git push
 
   source-bundle:
-    needs: create-release
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y p7zip-full
@@ -95,4 +120,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ inputs.tag }}" sources.7z --clobber
+        run: |
+          gh release view sources >/dev/null 2>&1 \
+            || gh release create sources --title sources --notes "Pristine dependency source mirror + offline bundles"
+          f="sources-$(git rev-parse --short HEAD).7z"
+          mv sources.7z "$f"
+          if gh release view sources --json assets -q '.assets[].name' | grep -qx "$f"; then
+            echo "skip $f (already published)"
+          else
+            gh release upload sources "$f"
+          fi

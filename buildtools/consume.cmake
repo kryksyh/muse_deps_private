@@ -1,12 +1,13 @@
-# Generic consume engine — one file replacing the 16 per-dep <name>/<name>.cmake.
+# Generic consume engine. The consumer includes the dep's metadata + recipe spec
+# and calls muse_consume(name version mode local_path os arch). Resolution is
+# driven by DEP_* metadata; lib names are derived from the installed prefix.
 #
-# The consumer (Audacity's require_dep/require_source_dep/require_tool) fetches
-# this engine + the dep's recipe (recipe/spec.cmake [+ patches, build.<os>.cmake,
-# consume.cmake]) and calls muse_consume(). Everything is driven by metadata in
-# spec.cmake; lib names are DERIVED from the installed prefix, never hand-listed.
+# Prebuilt binaries are looked up in prebuilt.lock (repo root): one line per
+# "<name> <version> <os> <arch> <archive> <sha256>", downloaded from
+# $MUSE_DEPS_PREBUILT_URL (or the default release), SHA-verified, extracted into
+# local_path. Any miss or failure falls back to building from source.
 #
-# spec.cmake consume metadata (beyond the build fields source URL/SHA, build
-# system, deps, patches):
+# Metadata keys (beyond the spec's source URL/SHA, deps, patches, cmake args):
 #   DEP_KIND              library | source | tool        (default: library)
 #   DEP_TARGET            imported target name (e.g. Opus::opus)
 #   DEP_LIBS              base lib name(s), unix (e.g. "opus", "vorbis vorbisenc vorbisfile")
@@ -21,10 +22,13 @@
 #   DEP_SYSTEM_LIBS       find_library name(s) for SYSTEM mode
 # A dep may instead define a function <name>_consume_override(mode local_path os
 # arch version) in its <name>/<name>.cmake to fully override resolution
-# (used by deps with a non-standard layout / multiple targets / system-only:
-# wxwidgets, flac, openssl, libcurl).
+# (used by deps with a non-standard layout or system-only: wxwidgets, openssl,
+# libcurl).
 
 cmake_minimum_required(VERSION 3.16)
+
+get_filename_component(_MUSE_DEPS_ROOT "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+include("${CMAKE_CURRENT_LIST_DIR}/build_dep_lib.cmake")
 
 # Derive the link set (what to link) and bundle set (runtime libs to install)
 # for <libnames> in <prefix>, by OS convention. Globs handle versioned sonames.
@@ -142,6 +146,11 @@ function(_muse_resolve_installed name prefix os)
     foreach(_e ${entries})
         _muse_parse_entry("${_e}" _tgt _libs)
         _muse_resolve_prefix_libs("${prefix}" "${os}" "${_libs}" _link _bundle)
+        foreach(_l ${_link})
+            if(NOT EXISTS "${_l}")
+                message(FATAL_ERROR "[${name}] resolved lib missing: ${_l}")
+            endif()
+        endforeach()
         if(_first AND DEP_LINK_DEPS)
             list(APPEND _link ${DEP_LINK_DEPS})   # extra interface deps on the primary target
         endif()
@@ -197,54 +206,87 @@ function(_muse_resolve_system name)
     set_property(GLOBAL PROPERTY ${name}_INSTALL_LIBRARIES "")
 endfunction()
 
-# Build from source into local_path, using the already-fetched recipe + builder.
-function(_muse_build name local_path os arch)
+# Build from source into local_path, using the recipe from the deps repo.
+function(_muse_build name version local_path os arch)
     set(prefixes "")
     foreach(dv ${DEP_DEPENDS})
         string(REPLACE "/" ";" _p "${dv}")
         list(GET _p 0 _dn)
         list(APPEND prefixes "${local_path}/../${_dn}")   # sibling _deps prefix (built earlier)
     endforeach()
-    include("${local_path}/build_dep_lib.cmake")
-    build_dep(NAME ${name} RECIPE_DIR "${local_path}/recipe" OS ${os} ARCH ${arch}
+    build_dep(NAME ${name} RECIPE_DIR "${_MUSE_DEPS_ROOT}/${name}/${version}/recipe"
+              OS ${os} ARCH ${arch}
               WORK "${local_path}/work" INSTALL_DIR "${local_path}"
               DEPENDS_PREFIXES "${prefixes}")
 endfunction()
 
-# Prebuilt deps ship as ONE per-platform archive in a single release, laid out as
-# <name>/include, <name>/lib, ... It is downloaded + extracted into the shared
-# _deps root ONCE (the first dep that needs it), populating every dep's prefix; a
-# marker guards against re-download. Each dep then just checks its own subtree.
-# Sets <out> TRUE if this dep's prefix is present, else FALSE so the caller falls
-# back to a source build. The release (incl. tag) is overridable via
-# $MUSE_DEPS_PREBUILT_URL for mirrors / local testing.
+# Look up <name version os arch> in prebuilt.lock, download the archive
+# (cache-first, SHA-verified) and extract it into local_path. Sets <out> TRUE on
+# success; any miss or failure returns FALSE and the caller builds from source.
+# A .prebuilt stamp records the archive name (it embeds the recipe signature), so
+# a lock update re-extracts and an unchanged reconfigure is a no-op.
 function(_muse_fetch_prebuilt name local_path os arch version out)
     set(${out} FALSE PARENT_SCOPE)
-    if(NOT os OR NOT arch)
+    set(lock "${_MUSE_DEPS_ROOT}/prebuilt.lock")
+    if(NOT os OR NOT arch OR NOT EXISTS "${lock}")
         return()
     endif()
-    get_filename_component(root "${local_path}" DIRECTORY)   # the shared _deps root
-    set(marker "${root}/.prebuilt-${os}-${arch}")
-    if(NOT EXISTS "${marker}")
-        file(WRITE "${marker}" "")   # attempt-once: a missing release must not re-download per dep
-        set(_pburl "$ENV{MUSE_DEPS_PREBUILT_URL}")
-        if(NOT _pburl)
-            set(_pburl "https://github.com/kryksyh/muse_deps_private/releases/download/deps-v1")
+    file(STRINGS "${lock}" entry REGEX "^${name} ${version} ${os} ${arch} ")
+    list(LENGTH entry n)
+    if(NOT n EQUAL 1)
+        return()
+    endif()
+    string(REPLACE " " ";" entry "${entry}")
+    list(GET entry 4 file)
+    list(GET entry 5 sha)
+
+    set(stamp "${local_path}/.prebuilt")
+    if(EXISTS "${stamp}")
+        file(READ "${stamp}" prev)
+        if(prev STREQUAL "${file}")
+            set(${out} TRUE PARENT_SCOPE)
+            return()
         endif()
-        set(archive "${root}/prebuilt-${os}-${arch}.7z")
-        file(DOWNLOAD "${_pburl}/prebuilt-${os}-${arch}.7z" "${archive}")
-        if(EXISTS "${archive}")
-            file(READ "${archive}" magic LIMIT 6 HEX)
-            if(magic STREQUAL "377abcaf271c")   # 7z signature
-                file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${root}")
-            else()
-                file(REMOVE "${archive}")
+    endif()
+
+    _bd_resolve_cache(cache)
+    set(archive "${cache}/prebuilt/${file}")
+    set(ok FALSE)
+    if(EXISTS "${archive}")
+        file(SHA256 "${archive}" got)
+        if(got STREQUAL "${sha}")
+            set(ok TRUE)
+        endif()
+    endif()
+    if(NOT ok)
+        set(url "$ENV{MUSE_DEPS_PREBUILT_URL}")
+        if(NOT url)
+            set(url "https://github.com/kryksyh/muse_deps_private/releases/download/prebuilt")
+        endif()
+        file(MAKE_DIRECTORY "${cache}/prebuilt")
+        foreach(attempt 1 2 3)
+            file(DOWNLOAD "${url}/${file}" "${archive}" STATUS st)
+            list(GET st 0 c)
+            if(c EQUAL 0)
+                file(SHA256 "${archive}" got)
+                if(got STREQUAL "${sha}")
+                    set(ok TRUE)
+                    break()
+                endif()
+                message(WARNING "[${name}] prebuilt ${file}: sha256 ${got} != ${sha}")
             endif()
-        endif()
+            file(REMOVE "${archive}")
+        endforeach()
     endif()
-    if(EXISTS "${local_path}/include")
-        set(${out} TRUE PARENT_SCOPE)
+    if(NOT ok)
+        return()
     endif()
+
+    file(REMOVE_RECURSE "${local_path}")
+    file(MAKE_DIRECTORY "${local_path}")
+    file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${local_path}")
+    file(WRITE "${stamp}" "${file}")
+    set(${out} TRUE PARENT_SCOPE)
 endfunction()
 
 # Source-delivery (amalgamated, e.g. lv2 stack): fetch each entry of DEP_SOURCES
@@ -252,7 +294,6 @@ endfunction()
 # cache, extract into local_path/<subdir>; expose <name>_SOURCE_DIR. The consumer
 # compiles these in-tree.
 function(_muse_populate_source name local_path version)
-    include("${local_path}/build_dep_lib.cmake")   # for _bd_fetch / _bd_mirror / cache
     _bd_resolve_cache(cache)
     set(dl "${cache}/downloads/${name}")
     file(MAKE_DIRECTORY "${dl}")
@@ -300,9 +341,8 @@ function(_muse_populate_source name local_path version)
     set_property(GLOBAL PROPERTY ${name}_SOURCE_DIR "${local_path}")
 endfunction()
 
-# Single entry point. The consumer pre-fetches consume.cmake + recipe (spec.cmake,
-# patches, build.<os>.cmake, optional consume.cmake) into local_path, includes
-# spec.cmake (for DEP_*) + this engine, then calls muse_consume(...).
+# Single entry point. The consumer includes the dep's metadata (+ spec for
+# non-system modes) and this engine, then calls muse_consume(...).
 function(muse_consume name version mode local_path os arch)
     # Per-dep override for non-standard layouts / multiple targets (wx, flac, openssl):
     # the dep's version-agnostic metadata file may define <name>_consume_override().
@@ -319,12 +359,12 @@ function(muse_consume name version mode local_path os arch)
             # back to source if this platform has none. Either way local_path ends
             # up populated, then we resolve it identically.
             if(mode STREQUAL "rebuild")
-                _muse_build("${name}" "${local_path}" "${os}" "${arch}")
+                _muse_build("${name}" "${version}" "${local_path}" "${os}" "${arch}")
             else()
                 _muse_fetch_prebuilt("${name}" "${local_path}" "${os}" "${arch}" "${version}" _ok)
                 if(NOT _ok)
                     message(STATUS "[${name}] no prebuilt for ${os}/${arch}, building from source")
-                    _muse_build("${name}" "${local_path}" "${os}" "${arch}")
+                    _muse_build("${name}" "${version}" "${local_path}" "${os}" "${arch}")
                 endif()
             endif()
             _muse_resolve_installed("${name}" "${local_path}" "${os}")
@@ -342,7 +382,7 @@ function(muse_consume name version mode local_path os arch)
             get_filename_component(_d "${${name}_EXE}" DIRECTORY)
             set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${_d}")
         else()
-            _muse_build("${name}" "${local_path}" "${os}" "${arch}")
+            _muse_build("${name}" "${version}" "${local_path}" "${os}" "${arch}")
             set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${local_path}/bin")
         endif()
 
