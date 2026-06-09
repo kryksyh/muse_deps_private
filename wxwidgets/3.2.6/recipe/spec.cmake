@@ -6,7 +6,6 @@
 set(DEP_SOURCE_URL    "https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.6/wxWidgets-3.2.6.tar.bz2")
 set(DEP_SOURCE_SHA256 "939e5b77ddc5b6092d1d7d29491fe67010a2433cf9b9c0d841ee4d04acb9dce7")
 
-set(DEP_BUILD_SYSTEM cmake)
 set(DEP_CMAKE_ARGS
     -DwxBUILD_SHARED=ON
     -DwxBUILD_SAMPLES=OFF

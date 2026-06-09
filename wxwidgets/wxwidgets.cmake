@@ -53,14 +53,20 @@ function(_wxwidgets_set_from_wxconfig wxconfig install_libs prefix)
     set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install_libs})
 endfunction()
 
-# Windows has no wx-config: derive from the MSVC install layout (setup.h under
-# lib/vc_x64_dll/baseu); link the import libs by full path; bundle the DLLs.
+# Windows has no wx-config: derive from the MSVC install layout (lib dir name
+# varies by arch: vc_x64_dll, vc_arm64_dll, ...); link import libs, bundle DLLs.
 function(_wxwidgets_set_windows prefix)
-    set(incs ${prefix}/include ${prefix}/lib/vc_x64_dll/baseu)
-    set(libs ${prefix}/lib/vc_x64_dll/wxbase32u.lib
-             ${prefix}/lib/vc_x64_dll/wxbase32u_net.lib)
-    set(install ${prefix}/lib/vc_x64_dll/wxbase32u_vc_x64_custom.dll
-                ${prefix}/lib/vc_x64_dll/wxbase32u_net_vc_x64_custom.dll)
+    file(GLOB _libdir "${prefix}/lib/vc_*dll")
+    list(LENGTH _libdir _n)
+    if(NOT _n EQUAL 1)
+        message(FATAL_ERROR "[wxwidgets] expected one lib/vc_*dll dir in ${prefix}, found: ${_libdir}")
+    endif()
+    set(incs ${prefix}/include ${_libdir}/baseu)
+    file(GLOB libs "${_libdir}/wxbase*.lib")
+    file(GLOB install "${_libdir}/wxbase*.dll")
+    if(NOT libs)
+        message(FATAL_ERROR "[wxwidgets] no wxbase*.lib in ${_libdir}")
+    endif()
     if(NOT TARGET wxwidgets::wxwidgets)
        add_library(wxwidgets::wxwidgets INTERFACE IMPORTED GLOBAL)
        target_include_directories(wxwidgets::wxwidgets INTERFACE ${incs})
@@ -84,7 +90,7 @@ function(wxwidgets_consume_override mode local_path os arch version)
             _muse_fetch_prebuilt(wxwidgets "${local_path}" "${os}" "${arch}" "${version}" _ok)
         endif()
         if(NOT _ok)
-            _muse_build(wxwidgets "${local_path}" "${os}" "${arch}")
+            _muse_build(wxwidgets "${version}" "${local_path}" "${os}" "${arch}")
         endif()
         if(os STREQUAL "windows")
             _wxwidgets_set_windows("${local_path}")
