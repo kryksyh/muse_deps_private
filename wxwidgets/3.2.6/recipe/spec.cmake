@@ -19,6 +19,7 @@ set(DEP_CMAKE_ARGS
     -DwxUSE_EXPAT=builtin
     -DwxUSE_REGEX=builtin
     -DwxUSE_LIBLZMA=OFF
+    -DwxUSE_SECRETSTORE=OFF
 )
 
 # wx's macOS "base" sources require the cocoa port, which only a GUI build
