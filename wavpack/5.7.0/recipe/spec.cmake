@@ -8,6 +8,9 @@ set(DEP_CMAKE_ARGS
     -DWAVPACK_BUILD_PROGRAMS=OFF
     -DBUILD_TESTING=OFF
 )
+# enable_language(ASM) picks up MinGW's cc from the runner PATH, which sets
+# MINGW and flips the lib naming away from wavpackdll.lib under MSVC.
+set(DEP_CMAKE_ARGS_WINDOWS -DWAVPACK_ENABLE_ASM=OFF)
 
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES COPYING)
