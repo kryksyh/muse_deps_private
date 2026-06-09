@@ -33,9 +33,7 @@ foreach(_s ${_specs})
     if(NOT DEFINED DEP_SOURCE_URL)
         continue()
     endif()
-    # Platform applicability: DEP_PLATFORMS entries match <os> or <os>-<arch>
-    # (e.g. openssl="linux macos"; yasm="windows-x86_64" — not Windows-ARM64, which
-    # uses NEON). Applicable if either form is listed.
+    # Platform applicability: DEP_PLATFORMS entries match <os> or <os>-<arch>.
     if(DEFINED DEP_PLATFORMS)
         list(FIND DEP_PLATFORMS "${OS}" _pf1)
         list(FIND DEP_PLATFORMS "${OS}-${ARCH}" _pf2)
@@ -48,9 +46,7 @@ foreach(_s ${_specs})
     get_filename_component(_ndir "${_vdir}" DIRECTORY) # .../<name>
     get_filename_component(_v "${_vdir}" NAME)
     get_filename_component(_n "${_ndir}" NAME)
-    # DEP_KIND (in the version-agnostic metadata) decides handling: source-delivery
-    # is skipped (ships in the source bundle); tools (yasm) are built as build-time
-    # deps + put on PATH but NOT packaged; libraries are built + packaged.
+    # Source-delivery deps ship in the source bundle, not as prebuilt archives.
     unset(DEP_KIND)
     if(EXISTS "${_ndir}/${_n}.cmake")
         include("${_ndir}/${_n}.cmake")
@@ -65,30 +61,9 @@ foreach(_s ${_specs})
         list(GET _p 0 _dn)
         list(APPEND _DEPS_${_n} "${_dn}")
     endforeach()
-    if(DEP_KIND STREQUAL "tool")
-        list(APPEND TOOLS "${_n}")
-    else()
-        list(APPEND ALL "${_n}")
-    endif()
+    list(APPEND ALL "${_n}")
 endforeach()
 list(REMOVE_DUPLICATES ALL)
-
-# Build-time tools (e.g. yasm for mpg123's x86/x64 asm decoder) on PATH before the
-# libs. DEP_PLATFORMS already restricted TOOLS to this platform (yasm -> Windows),
-# so this is empty elsewhere. Tools are never packaged (built outside STAGE).
-if(OS STREQUAL "windows")
-    set(_sep ";")
-else()
-    set(_sep ":")
-endif()
-foreach(_t ${TOOLS})
-    message(STATUS "[platform] tool ${_t}/${_VER_${_t}}")
-    build_dep(NAME ${_t} RECIPE_DIR "${REPO_ROOT}/${_t}/${_VER_${_t}}/recipe"
-              OS ${OS} ARCH ${ARCH}
-              WORK "${REPO_ROOT}/.build/platform/work/${_t}"
-              INSTALL_DIR "${REPO_ROOT}/.build/platform/tools/${_t}")
-    set(ENV{PATH} "${REPO_ROOT}/.build/platform/tools/${_t}/bin${_sep}$ENV{PATH}")
-endforeach()
 
 # Build in dependency order: a dep is built once all its DEP_DEPENDS are staged.
 set(DONE "")
