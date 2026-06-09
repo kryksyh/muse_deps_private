@@ -1,6 +1,6 @@
 # Pinned version — single source of truth for this dep (the consumer reads it;
 # the muse_deps ref pins the whole set atomically).
-set(DEP_VERSION 1.4.2)
+set(DEP_VERSION 1.4.3)
 
 # Consume metadata for flac. Two imported targets from one prefix: FLAC::FLAC (C)
 # and FLAC::FLAC++ (C++) — au3's mod-flac uses both. Declared via the engine's
