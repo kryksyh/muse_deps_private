@@ -85,21 +85,36 @@ jobs:
             || gh release create prebuilt --title prebuilt \
                  --notes "Content-addressed prebuilt dependency archives; index in prebuilt.lock."
           existing=$(gh release view prebuilt --json assets -q '.assets[].name')
+          : > skipped.txt
           for f in out/*.7z; do
             name=$(basename "$f")
             if grep -qx "$name" <<< "$existing"; then
               echo "skip $name (already published)"
+              echo "$name" >> skipped.txt
             else
               gh release upload prebuilt "$f"
             fi
           done
+      # Builds are not bit-reproducible: a rebuilt archive whose name (recipe sig)
+      # is already published differs in bytes from the published asset. The asset
+      # is write-once, so its lock line must record the PUBLISHED bytes' sha.
       - name: Merge lock fragments and commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
+          mkdir -p .published
           for frag in out/prebuilt-*.lock; do
             os_arch=$(basename "$frag" .lock | sed 's/^prebuilt-//')
             os=${os_arch%-*}; arch=${os_arch##*-}
             [ -f prebuilt.lock ] && grep -v " $os $arch " prebuilt.lock > prebuilt.lock.tmp || : > prebuilt.lock.tmp
-            cat "$frag" >> prebuilt.lock.tmp
+            while read -r name ver los larch file sha; do
+              if grep -qx "$file" skipped.txt; then
+                [ -f ".published/$file" ] || gh release download prebuilt --pattern "$file" --dir .published
+                sha=$(sha256sum ".published/$file" | awk '{print $1}')
+              fi
+              echo "$name $ver $los $larch $file $sha" >> prebuilt.lock.tmp
+            done < "$frag"
             sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
           done
           git config user.name github-actions
