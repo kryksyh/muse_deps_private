@@ -73,8 +73,7 @@ endfunction()
 
 # Standard CMake configure + build + install of <srcdir> into INSTALL. Reads
 # BUILD/INSTALL/BD_*/DEP_CMAKE_ARGS/BD_DEPENDS_PREFIXES from the calling scope
-# (dynamic scope). Used by the default cmake build and by per-OS build.<os>.cmake
-# recipes (e.g. Windows MSVC builds of deps whose autotools path can't run).
+# (dynamic scope). Used by the default build and by recipe build.cmake files.
 function(_bd_cmake_build srcdir)
     set(cfg -S "${srcdir}" -B "${BUILD}" -G Ninja
             -DCMAKE_BUILD_TYPE=RelWithDebInfo   # always; see build_dep() header (CRT match)
@@ -177,6 +176,20 @@ function(_bd_relocatable_macos os install_dir)
     endforeach()
 endfunction()
 
+# Signature of a recipe for one os/arch: hashes every recipe file, so any recipe
+# change yields a new signature. Used for the build stamp and archive naming.
+function(_bd_recipe_sig recipe_dir os arch out)
+    set(_sig "${os}|${arch}")
+    file(GLOB_RECURSE _files "${recipe_dir}/*")
+    list(SORT _files)
+    foreach(_f ${_files})
+        file(SHA256 "${_f}" _h)
+        string(APPEND _sig "|${_h}")
+    endforeach()
+    string(SHA256 _sig "${_sig}")
+    set(${out} "${_sig}" PARENT_SCOPE)
+endfunction()
+
 function(build_dep)
     cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
 
@@ -191,34 +204,17 @@ function(build_dep)
     endforeach()
     include("${BD_RECIPE_DIR}/spec.cmake")
 
-    # Two-level spec: merge per-OS overrides DEP_<key>_<OS> into the common keys
-    # (lists append, scalars override). No per-arch level (handled by the driver
-    # via the arch flag + archive naming).
+    # Per-OS overrides DEP_<key>_<OS> append to the common keys. No per-arch level
+    # (handled by the driver via the arch flag + archive naming).
     string(TOUPPER "${BD_OS}" _os)
-    foreach(_k CMAKE_ARGS CONFIGURE_ARGS PATCHES DEPENDS)
+    foreach(_k CMAKE_ARGS PATCHES DEPENDS)
         if(DEFINED DEP_${_k}_${_os})
             list(APPEND DEP_${_k} ${DEP_${_k}_${_os}})
         endif()
     endforeach()
-    if(DEFINED DEP_BUILD_SYSTEM_${_os})
-        set(DEP_BUILD_SYSTEM "${DEP_BUILD_SYSTEM_${_os}}")
-    endif()
-    if(DEFINED DEP_CMAKE_SOURCE_SUBDIR_${_os})
-        set(DEP_CMAKE_SOURCE_SUBDIR "${DEP_CMAKE_SOURCE_SUBDIR_${_os}}")
-    endif()
 
-    # Skip the (expensive) rebuild when the recipe inputs are unchanged — makes
-    # reconfigures fast. The signature hashes os/arch + every recipe file
-    # (spec.cmake carries the source URL+SHA and build flags; patches and
-    # build.<os>.cmake too), so any real recipe change still triggers a rebuild.
-    set(_sig "${BD_OS}|${BD_ARCH}")
-    file(GLOB_RECURSE _recipe_files "${BD_RECIPE_DIR}/*")
-    list(SORT _recipe_files)
-    foreach(_rf ${_recipe_files})
-        file(SHA256 "${_rf}" _rh)
-        string(APPEND _sig "|${_rh}")
-    endforeach()
-    string(SHA256 _build_sig "${_sig}")
+    # Skip the rebuild when the recipe is unchanged — makes reconfigures fast.
+    _bd_recipe_sig("${BD_RECIPE_DIR}" "${BD_OS}" "${BD_ARCH}" _build_sig)
     set(_build_stamp "${BD_INSTALL_DIR}/.build_stamp")
     if(EXISTS "${_build_stamp}")
         file(READ "${_build_stamp}" _prev_sig)
@@ -281,69 +277,19 @@ function(build_dep)
 
     # 3. build + install
     set(INSTALL "${BD_INSTALL_DIR}")
-    if(NOT DEFINED DEP_BUILD_SYSTEM)
-        set(DEP_BUILD_SYSTEM "cmake")
-    endif()
-
-    # macOS arch/deployment flags (single-arch; used by autotools/openssl)
     if(NOT DEFINED DEP_MACOS_DEPLOYMENT_TARGET)
         set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
     endif()
-    set(mac_cflags "")
-    if(BD_OS STREQUAL "macos")
-        if(BD_ARCH STREQUAL "x86_64")
-            set(_mac_arches "-arch x86_64")
-        elseif(BD_ARCH STREQUAL "universal")
-            set(_mac_arches "-arch x86_64 -arch arm64")   # clang builds universal in one pass
-        else()
-            set(_mac_arches "-arch arm64")
-        endif()
-        set(mac_cflags "${_mac_arches} -mmacosx-version-min=${DEP_MACOS_DEPLOYMENT_TARGET}")
-    endif()
-
-    # Dependency env for non-CMake builds (deps carry pkgconfig + headers/libs).
-    set(dep_cppflags "")
-    set(dep_ldflags "")
-    set(dep_pkgpaths "")
-    foreach(p ${BD_DEPENDS_PREFIXES})
-        string(APPEND dep_cppflags " -I${p}/include")
-        string(APPEND dep_ldflags " -L${p}/lib")
-        list(APPEND dep_pkgpaths "${p}/lib/pkgconfig")
-    endforeach()
-    string(REPLACE ";" ":" dep_pkgpath "${dep_pkgpaths}")
 
     if(EXISTS "${BD_RECIPE_DIR}/build.cmake")
-        include("${BD_RECIPE_DIR}/build.cmake")   # custom CMake build (any platform); uses SRC/BUILD/INSTALL
-
-    elseif(DEP_BUILD_SYSTEM STREQUAL "cmake")
+        include("${BD_RECIPE_DIR}/build.cmake")   # custom CMake build; uses SRC/BUILD/INSTALL
+    else()
         # Some projects keep their CMake build in a subdir (e.g. mpg123 ports/cmake).
         set(_csrc "${SRC}")
         if(DEP_CMAKE_SOURCE_SUBDIR)
             set(_csrc "${SRC}/${DEP_CMAKE_SOURCE_SUBDIR}")
         endif()
         _bd_cmake_build("${_csrc}")
-
-    elseif(DEP_BUILD_SYSTEM STREQUAL "autotools")
-        if(BD_OS STREQUAL "windows")
-            message(FATAL_ERROR "[${BD_NAME}] autotools can't run on Windows — set DEP_BUILD_SYSTEM_WINDOWS cmake (with DEP_CMAKE_SOURCE_SUBDIR_WINDOWS for a CMake port, as mpg123 does) or add a recipe/build.cmake")
-        endif()
-        file(MAKE_DIRECTORY "${BUILD}")
-        if(DEP_AUTORECONF)
-            _bd_run_dir("${SRC}" autoreconf -fi)
-        endif()
-        cmake_host_system_information(RESULT ncpu QUERY NUMBER_OF_LOGICAL_CORES)
-        _bd_run_dir("${BUILD}" ${CMAKE_COMMAND} -E env
-            "CFLAGS=${mac_cflags}${dep_cppflags}" "CXXFLAGS=${mac_cflags}${dep_cppflags}"
-            "LDFLAGS=${dep_ldflags}" "PKG_CONFIG_PATH=${dep_pkgpath}"
-            "${SRC}/configure" --prefix=${INSTALL} --enable-shared --disable-static ${DEP_CONFIGURE_ARGS})
-        _bd_run_dir("${BUILD}" make -j${ncpu})
-        if(NOT DEFINED DEP_MAKE_INSTALL_TARGET)
-            set(DEP_MAKE_INSTALL_TARGET "install")
-        endif()
-        _bd_run_dir("${BUILD}" make ${DEP_MAKE_INSTALL_TARGET})
-
-    else()
-        message(FATAL_ERROR "[${BD_NAME}] unknown DEP_BUILD_SYSTEM: ${DEP_BUILD_SYSTEM} (or provide recipe/build.cmake)")
     endif()
 
     if(DEFINED DEP_LICENSE_FILES)
