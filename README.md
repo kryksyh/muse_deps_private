@@ -1,27 +1,55 @@
-# muse_deps — build-CI sandbox
+# muse_deps
 
-Private sandbox for the build-from-source dependency pipeline.
+Dependency recipes, build tooling and prebuilt-binary index for Audacity 4.
+Consumed as a git submodule: the consumer includes `buildtools/consume.cmake`
+and drives it from its dependency manifest.
 
 ## Layout
 
 ```
-buildtools/build_dep.cmake     generic driver: sources -> patch -> build -> install -> package
-<name>/<version>/
-  <name>.cmake                 consume metadata (downloads prebuilt .7z from the release, or system find)
-  recipe/
-    spec.cmake                 per-dep: source, cmake args, license, archive names, system package
-    patch/*.patch              optional, applied after get-sources
-    build.cmake                optional override for non-CMake libs
+buildtools/
+  consume.cmake              consume engine: prebuilt (lock-verified) / source / system
+  build_dep_lib.cmake        builder: fetch (SHA-256) -> patch -> cmake build -> install
+  build_platform.cmake       producer: build all recipes for one os/arch, pack per-dep archives
+  build_source_bundle.cmake  offline bundle: recipes + all pinned sources in one archive
+  mirror_sources.cmake       stage source tarballs for the `sources` release mirror
+prebuilt.lock                index of prebuilt archives: name version os arch file sha256
+<name>/
+  <name>.cmake               metadata: DEP_VERSION + consume keys (targets, libs, ...)
+  <version>/recipe/
+    spec.cmake               source URL + SHA-256, cmake args, deps, patches, license
+    patch/*.patch            optional
+    build.cmake              optional custom build for libs without upstream CMake
 ```
 
-## Build a dependency
+## Releases
 
-CI: dispatch the **Build dependency** workflow with `lib` (e.g. `opus/1.5.2`) and
-`platforms` (`all` or a comma list of `macos,windows,linux`). Each platform job
-builds and uploads the `.7z` to release tag `<name>-<version>`.
+- `prebuilt` — per-dep archives, named `<name>-<version>-<os>-<arch>-<sig>.7z`
+  (`sig` = recipe hash). Content-addressed and write-once; `prebuilt.lock` maps
+  each dep/platform to its archive + SHA-256, so consumers verify every download
+  and a recipe change can never be served stale.
+- `sources` — mirror of all pinned source tarballs (fallback when upstream is
+  down) + self-contained `sources-<sha>.7z` offline bundles.
+
+## Publishing
+
+Dispatch the **Build prebuilt deps** workflow. Matrix jobs build every recipe per
+platform and upload archives; the collect job publishes new assets (existing ones
+are never overwritten) and commits the updated `prebuilt.lock`. Then bump the
+submodule pin in the consumer.
 
 Locally:
 
 ```
-cmake -DLIB=opus/1.5.2 -DOS=macos -DARCH=universal -P buildtools/build_dep.cmake
+cmake -DOS=macos -DARCH=universal -P buildtools/build_platform.cmake
 ```
+
+Archives + lock fragment land in `.build/platform/out/`.
+
+## Adding / bumping a dep
+
+1. Add `<name>/<version>/recipe/spec.cmake` (and metadata `<name>/<name>.cmake`
+   for a new dep); set `DEP_VERSION`.
+2. Build locally or via the workflow; consumers without a matching lock entry
+   fall back to building from source, so a recipe is usable before any release.
+3. Run the **Mirror dependency sources** workflow to mirror the new tarball.
