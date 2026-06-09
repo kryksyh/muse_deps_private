@@ -86,13 +86,9 @@ macro(_muse_libnames os out)
     endif()
 endmacro()
 
-# Resolve a library dep from its installed prefix (after build or extract).
-#   DEP_STATIC          fully static (lib<n>.a / <n>.lib): link it, bundle nothing
-#   DEP_STATIC_WINDOWS  static on Windows only (shared elsewhere)
-#   DEP_LINK_DEPS       extra imported targets to add to the link interface
-#                       (e.g. a static lib that needs another dep's target)
-# Resolve <libnames> from an installed prefix into link + bundle sets, honoring
-# DEP_STATIC (fully static) / DEP_STATIC_WINDOWS (static on Windows only).
+# Resolve <libnames> from an installed prefix into link + bundle sets, by OS
+# convention. DEP_STATIC = fully static (link lib<n>.a / <n>.lib, bundle nothing);
+# DEP_STATIC_WINDOWS = static on Windows only (shared elsewhere).
 function(_muse_resolve_prefix_libs prefix os libnames out_link out_bundle)
     if(DEP_STATIC)
         set(link "")
@@ -128,6 +124,14 @@ macro(_muse_target_entries fallback_libs out)
     endif()
 endmacro()
 
+# Split one "target|lib1 lib2" entry into its target name + lib list.
+macro(_muse_parse_entry entry out_target out_libs)
+    string(REPLACE "|" ";" _pe "${entry}")
+    list(GET _pe 0 ${out_target})
+    list(GET _pe 1 _pe_libs)
+    string(REPLACE " " ";" ${out_libs} "${_pe_libs}")
+endmacro()
+
 function(_muse_resolve_installed name prefix os)
     _muse_incdirs("${prefix}" inc)
     _muse_libnames("${os}" libnames)
@@ -136,10 +140,7 @@ function(_muse_resolve_installed name prefix os)
     set(_allbundle "")
     set(_first TRUE)
     foreach(_e ${entries})
-        string(REPLACE "|" ";" _kv "${_e}")
-        list(GET _kv 0 _tgt)
-        list(GET _kv 1 _libstr)
-        string(REPLACE " " ";" _libs "${_libstr}")
+        _muse_parse_entry("${_e}" _tgt _libs)
         _muse_resolve_prefix_libs("${prefix}" "${os}" "${_libs}" _link _bundle)
         if(_first AND DEP_LINK_DEPS)
             list(APPEND _link ${DEP_LINK_DEPS})   # extra interface deps on the primary target
@@ -183,10 +184,7 @@ function(_muse_resolve_system name)
     set(_primary_libs "")
     set(_first TRUE)
     foreach(_e ${entries})
-        string(REPLACE "|" ";" _kv "${_e}")
-        list(GET _kv 0 _tgt)
-        list(GET _kv 1 _libstr)
-        string(REPLACE " " ";" _libs "${_libstr}")
+        _muse_parse_entry("${_e}" _tgt _libs)
         _muse_find_system_libs("${name}" "${_libs}" _found)
         _muse_make_target("${_tgt}" "${inc}" "${_found}")
         if(_first)
@@ -247,14 +245,6 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
     if(EXISTS "${local_path}/include")
         set(${out} TRUE PARENT_SCOPE)
     endif()
-endfunction()
-
-function(_muse_populate_prebuilt name local_path os arch buildtype version)
-    _muse_fetch_prebuilt("${name}" "${local_path}" "${os}" "${arch}" "${version}" ok)
-    if(ok)
-        _muse_resolve_installed("${name}" "${local_path}" "${os}")
-    endif()
-    set_property(GLOBAL PROPERTY ${name}_AVAILABLE ${ok})
 endfunction()
 
 # Source-delivery (amalgamated, e.g. lv2 stack): fetch each entry of DEP_SOURCES
@@ -324,17 +314,20 @@ function(muse_consume name version mode local_path os arch buildtype)
     if(NOT DEFINED DEP_KIND OR DEP_KIND STREQUAL "library")
         if(mode STREQUAL "system")
             _muse_resolve_system("${name}")
-        elseif(mode STREQUAL "rebuild")
-            _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
-            _muse_resolve_installed("${name}" "${local_path}" "${os}")
         else()
-            _muse_populate_prebuilt("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}" "${version}")
-            get_property(avail GLOBAL PROPERTY ${name}_AVAILABLE)
-            if(NOT avail)
-                message(STATUS "[${name}] no prebuilt for ${os}/${arch}, building from source")
+            # rebuild: always from source. prebuilt: extract the archive, falling
+            # back to source if this platform has none. Either way local_path ends
+            # up populated, then we resolve it identically.
+            if(mode STREQUAL "rebuild")
                 _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
-                _muse_resolve_installed("${name}" "${local_path}" "${os}")
+            else()
+                _muse_fetch_prebuilt("${name}" "${local_path}" "${os}" "${arch}" "${version}" _ok)
+                if(NOT _ok)
+                    message(STATUS "[${name}] no prebuilt for ${os}/${arch}, building from source")
+                    _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
+                endif()
             endif()
+            _muse_resolve_installed("${name}" "${local_path}" "${os}")
         endif()
 
     elseif(DEP_KIND STREQUAL "source")
