@@ -242,42 +242,35 @@ function(build_dep)
     file(REMOVE_RECURSE "${BD_WORK}")
     file(MAKE_DIRECTORY "${BD_WORK}")
 
-    # 1. sources
-    if(DEFINED DEP_FORK_GIT)
-        # submodules carry bundled 3rdparty sources (e.g. wx's builtin zlib/expat)
-        _bd_run(${GIT} clone --depth 1 --branch "${DEP_FORK_REF}"
-                --recurse-submodules --shallow-submodules "${DEP_FORK_GIT}" "${SRC}")
+    # 1. sources — pristine tarball, cache-first: reuse a cached copy (re-verifying
+    # its SHA so tampering/corruption is caught), else download into the cache
+    # (file(DOWNLOAD) verifies on fetch), then extract.
+    get_filename_component(an "${DEP_SOURCE_URL}" NAME)
+    set(dl_dir "${BD_CACHE}/downloads/${BD_NAME}")
+    set(archive "${dl_dir}/${an}")
+    if(EXISTS "${archive}")
+        file(SHA256 "${archive}" _got)
+        if(NOT _got STREQUAL "${DEP_SOURCE_SHA256}")
+            message(FATAL_ERROR "[${BD_NAME}] cached ${an} SHA256 mismatch: ${_got} != ${DEP_SOURCE_SHA256}")
+        endif()
+        message(STATUS "[${BD_NAME}] cached ${an}")
     else()
-        # Pristine tarball, cache-first: reuse a cached copy (re-verifying its
-        # SHA so tampering/corruption is caught), otherwise download into the
-        # cache (file(DOWNLOAD) verifies on fetch).
-        get_filename_component(an "${DEP_SOURCE_URL}" NAME)
-        set(dl_dir "${BD_CACHE}/downloads/${BD_NAME}")
-        set(archive "${dl_dir}/${an}")
-        if(EXISTS "${archive}")
-            file(SHA256 "${archive}" _got)
-            if(NOT _got STREQUAL "${DEP_SOURCE_SHA256}")
-                message(FATAL_ERROR "[${BD_NAME}] cached ${an} SHA256 mismatch: ${_got} != ${DEP_SOURCE_SHA256}")
-            endif()
-            message(STATUS "[${BD_NAME}] cached ${an}")
-        else()
-            file(MAKE_DIRECTORY "${dl_dir}")
-            message(STATUS "[${BD_NAME}] fetch ${DEP_SOURCE_URL}")
-            _bd_mirror(_mirror)
-            _bd_fetch("${archive}" "${DEP_SOURCE_SHA256}"
-                      "${DEP_SOURCE_URL}" "${_mirror}/${BD_NAME}-${an}")
-        endif()
-        set(extract "${BD_WORK}/extract")
-        file(MAKE_DIRECTORY "${extract}")
-        file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${extract}")
-        file(GLOB top LIST_DIRECTORIES true "${extract}/*")
-        list(LENGTH top n)
-        if(n EQUAL 1)
-            list(GET top 0 root)
-            file(RENAME "${root}" "${SRC}")
-        else()
-            file(RENAME "${extract}" "${SRC}")
-        endif()
+        file(MAKE_DIRECTORY "${dl_dir}")
+        message(STATUS "[${BD_NAME}] fetch ${DEP_SOURCE_URL}")
+        _bd_mirror(_mirror)
+        _bd_fetch("${archive}" "${DEP_SOURCE_SHA256}"
+                  "${DEP_SOURCE_URL}" "${_mirror}/${BD_NAME}-${an}")
+    endif()
+    set(extract "${BD_WORK}/extract")
+    file(MAKE_DIRECTORY "${extract}")
+    file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${extract}")
+    file(GLOB top LIST_DIRECTORIES true "${extract}/*")
+    list(LENGTH top n)
+    if(n EQUAL 1)
+        list(GET top 0 root)
+        file(RENAME "${root}" "${SRC}")
+    else()
+        file(RENAME "${extract}" "${SRC}")
     endif()
 
     # 2. patch — from the (merged) DEP_PATCHES list so OS-specific patches only
@@ -320,11 +313,8 @@ function(build_dep)
     endforeach()
     string(REPLACE ";" ":" dep_pkgpath "${dep_pkgpaths}")
 
-    if(EXISTS "${BD_RECIPE_DIR}/build.${BD_OS}.cmake")
-        include("${BD_RECIPE_DIR}/build.${BD_OS}.cmake")  # per-OS override (e.g. Windows MSVC)
-
-    elseif(EXISTS "${BD_RECIPE_DIR}/build.cmake")
-        include("${BD_RECIPE_DIR}/build.cmake")   # uses SRC, BUILD, INSTALL; must install into INSTALL
+    if(EXISTS "${BD_RECIPE_DIR}/build.cmake")
+        include("${BD_RECIPE_DIR}/build.cmake")   # custom CMake build (any platform); uses SRC/BUILD/INSTALL
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "cmake")
         # Some projects keep their CMake build in a subdir (e.g. mpg123 ports/cmake).
@@ -336,7 +326,7 @@ function(build_dep)
 
     elseif(DEP_BUILD_SYSTEM STREQUAL "autotools")
         if(BD_OS STREQUAL "windows")
-            message(FATAL_ERROR "[${BD_NAME}] autotools can't run on Windows — add recipe/build.windows.cmake and declare it via DEP_RECIPE_FILES_WINDOWS in spec.cmake (it was not fetched, so the build fell through to autotools)")
+            message(FATAL_ERROR "[${BD_NAME}] autotools can't run on Windows — set DEP_BUILD_SYSTEM_WINDOWS cmake (with DEP_CMAKE_SOURCE_SUBDIR_WINDOWS for a CMake port, as mpg123 does) or add a recipe/build.cmake")
         endif()
         file(MAKE_DIRECTORY "${BUILD}")
         if(DEP_AUTORECONF)
