@@ -2,7 +2,7 @@
 # per-platform prebuilt archive — prebuilt-<os>-<arch>.7z laid out as <name>/include,
 # <name>/lib, ... per dep, which is exactly what the consumer downloads + extracts.
 #
-#   cmake -DOS=macos -DARCH=universal [-DBUILDTYPE=relwithdebinfo] -P buildtools/build_platform.cmake
+#   cmake -DOS=macos -DARCH=universal -P buildtools/build_platform.cmake
 #
 # Source-delivery deps (no DEP_SOURCE_URL, e.g. lv2sdk) are skipped — they ship in
 # the source bundle, not the prebuilt archive. Deps are built in dependency order
@@ -11,9 +11,6 @@
 cmake_minimum_required(VERSION 3.24)
 if(NOT DEFINED OS OR NOT DEFINED ARCH)
     message(FATAL_ERROR "Required: -DOS=<macos|linux|windows> -DARCH=<x86_64|aarch64|universal>")
-endif()
-if(NOT DEFINED BUILDTYPE)
-    set(BUILDTYPE "relwithdebinfo")
 endif()
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
 include("${CMAKE_CURRENT_LIST_DIR}/build_dep_lib.cmake")
@@ -86,7 +83,7 @@ endif()
 foreach(_t ${TOOLS})
     message(STATUS "[platform] tool ${_t}/${_VER_${_t}}")
     build_dep(NAME ${_t} RECIPE_DIR "${REPO_ROOT}/${_t}/${_VER_${_t}}/recipe"
-              OS ${OS} ARCH ${ARCH} BUILDTYPE ${BUILDTYPE}
+              OS ${OS} ARCH ${ARCH}
               WORK "${REPO_ROOT}/.build/platform/work/${_t}"
               INSTALL_DIR "${REPO_ROOT}/.build/platform/tools/${_t}")
     set(ENV{PATH} "${REPO_ROOT}/.build/platform/tools/${_t}/bin${_sep}$ENV{PATH}")
@@ -117,7 +114,7 @@ while(_remaining GREATER 0)
         endif()
         message(STATUS "[platform] build ${_n}/${_VER_${_n}}")
         build_dep(NAME ${_n} RECIPE_DIR "${REPO_ROOT}/${_n}/${_VER_${_n}}/recipe"
-                  OS ${OS} ARCH ${ARCH} BUILDTYPE ${BUILDTYPE}
+                  OS ${OS} ARCH ${ARCH}
                   WORK "${REPO_ROOT}/.build/platform/work/${_n}" INSTALL_DIR "${STAGE}/${_n}"
                   DEPENDS_PREFIXES "${_prefixes}")
         list(APPEND DONE "${_n}")

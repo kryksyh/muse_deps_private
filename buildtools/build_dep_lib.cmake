@@ -2,11 +2,10 @@
 # consume engine's source path (_muse_build in consume.cmake). Include this file,
 # then call build_dep(...).
 #
-# build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> BUILDTYPE <bt> WORK <w> INSTALL_DIR <i> [CACHE <c>])
+# build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> WORK <w> INSTALL_DIR <i> [CACHE <c>])
 #   sources -> patch -> cmake configure/build/install into INSTALL_DIR.
-#   NB: deps are ALWAYS built RelWithDebInfo regardless of BUILDTYPE — a Debug dep
-#   would mismatch the app's CRT on Windows (/MDd vs /MD). BUILDTYPE is accepted
-#   (callers thread it through) but intentionally not applied.
+#   NB: deps are ALWAYS built RelWithDebInfo — a Debug dep would mismatch the app's
+#   CRT on Windows (/MDd vs /MD).
 #   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies <d>/patch/*.patch.
 #   Pristine source archives are fetched into a persistent, SHA-verified cache
 #   (CACHE, or $MUSE_DEPS_CACHE, or ~/.cache/muse_deps) so rebuilds and offline
@@ -179,7 +178,7 @@ function(_bd_relocatable_macos os install_dir)
 endfunction()
 
 function(build_dep)
-    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;BUILDTYPE;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
+    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
 
     # Clear any ambient DEP_* so the spec starts from a clean slate — a caller that
     # builds many deps in one process (build_platform) must not leak one recipe's

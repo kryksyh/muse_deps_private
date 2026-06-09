@@ -20,7 +20,7 @@
 #   DEP_SYSTEM_HEADER     find_path arg for SYSTEM mode (e.g. opus/opus.h)
 #   DEP_SYSTEM_LIBS       find_library name(s) for SYSTEM mode
 # A dep may instead define a function <name>_consume_override(mode local_path os
-# arch buildtype version) in its <name>/<name>.cmake to fully override resolution
+# arch version) in its <name>/<name>.cmake to fully override resolution
 # (used by deps with a non-standard layout / multiple targets / system-only:
 # wxwidgets, flac, openssl, libcurl).
 
@@ -198,7 +198,7 @@ function(_muse_resolve_system name)
 endfunction()
 
 # Build from source into local_path, using the already-fetched recipe + builder.
-function(_muse_build name local_path os arch buildtype)
+function(_muse_build name local_path os arch)
     set(prefixes "")
     foreach(dv ${DEP_DEPENDS})
         string(REPLACE "/" ";" _p "${dv}")
@@ -207,7 +207,7 @@ function(_muse_build name local_path os arch buildtype)
     endforeach()
     include("${local_path}/build_dep_lib.cmake")
     build_dep(NAME ${name} RECIPE_DIR "${local_path}/recipe" OS ${os} ARCH ${arch}
-              BUILDTYPE ${buildtype} WORK "${local_path}/work" INSTALL_DIR "${local_path}"
+              WORK "${local_path}/work" INSTALL_DIR "${local_path}"
               DEPENDS_PREFIXES "${prefixes}")
 endfunction()
 
@@ -303,11 +303,11 @@ endfunction()
 # Single entry point. The consumer pre-fetches consume.cmake + recipe (spec.cmake,
 # patches, build.<os>.cmake, optional consume.cmake) into local_path, includes
 # spec.cmake (for DEP_*) + this engine, then calls muse_consume(...).
-function(muse_consume name version mode local_path os arch buildtype)
+function(muse_consume name version mode local_path os arch)
     # Per-dep override for non-standard layouts / multiple targets (wx, flac, openssl):
     # the dep's version-agnostic metadata file may define <name>_consume_override().
     if(COMMAND ${name}_consume_override)
-        cmake_language(CALL ${name}_consume_override "${mode}" "${local_path}" "${os}" "${arch}" "${buildtype}" "${version}")
+        cmake_language(CALL ${name}_consume_override "${mode}" "${local_path}" "${os}" "${arch}" "${version}")
         return()
     endif()
 
@@ -319,12 +319,12 @@ function(muse_consume name version mode local_path os arch buildtype)
             # back to source if this platform has none. Either way local_path ends
             # up populated, then we resolve it identically.
             if(mode STREQUAL "rebuild")
-                _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
+                _muse_build("${name}" "${local_path}" "${os}" "${arch}")
             else()
                 _muse_fetch_prebuilt("${name}" "${local_path}" "${os}" "${arch}" "${version}" _ok)
                 if(NOT _ok)
                     message(STATUS "[${name}] no prebuilt for ${os}/${arch}, building from source")
-                    _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
+                    _muse_build("${name}" "${local_path}" "${os}" "${arch}")
                 endif()
             endif()
             _muse_resolve_installed("${name}" "${local_path}" "${os}")
@@ -342,7 +342,7 @@ function(muse_consume name version mode local_path os arch buildtype)
             get_filename_component(_d "${${name}_EXE}" DIRECTORY)
             set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${_d}")
         else()
-            _muse_build("${name}" "${local_path}" "${os}" "${arch}" "${buildtype}")
+            _muse_build("${name}" "${local_path}" "${os}" "${arch}")
             set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${local_path}/bin")
         endif()
 
