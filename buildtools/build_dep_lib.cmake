@@ -80,9 +80,12 @@ function(_bd_cmake_build srcdir)
             -DCMAKE_INSTALL_PREFIX=${INSTALL}
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # allow pre-3.5 projects under CMake 4
             ${DEP_CMAKE_ARGS})
+    # List-valued cache vars (prefix path, osx archs) go through a -C initial-cache
+    # file: their embedded semicolons would be split by the list expansions on the
+    # way to execute_process.
+    set(_init "")
     if(BD_DEPENDS_PREFIXES)
-        string(REPLACE ";" "\\;" _pp "${BD_DEPENDS_PREFIXES}")
-        list(APPEND cfg "-DCMAKE_PREFIX_PATH=${_pp}")
+        string(APPEND _init "set(CMAKE_PREFIX_PATH \"${BD_DEPENDS_PREFIXES}\" CACHE STRING \"\" FORCE)\n")
     endif()
     if(BD_OS STREQUAL "macos")
         if(BD_ARCH STREQUAL "universal")
@@ -92,13 +95,13 @@ function(_bd_cmake_build srcdir)
         else()
             set(osx "x86_64")
         endif()
-        # Pass the arch list via a -C initial-cache file: a universal "x86_64;arm64"
-        # would otherwise be split by CMake list semantics as it passes through
-        # _bd_run's ${ARGN} into execute_process, dropping arm64.
+        string(APPEND _init "set(CMAKE_OSX_ARCHITECTURES \"${osx}\" CACHE STRING \"\" FORCE)\n")
+        string(APPEND _init "set(CMAKE_OSX_DEPLOYMENT_TARGET \"${DEP_MACOS_DEPLOYMENT_TARGET}\" CACHE STRING \"\" FORCE)\n")
+    endif()
+    if(_init)
         file(MAKE_DIRECTORY "${BUILD}")
-        file(WRITE "${BUILD}/osx_arch.cmake"
-            "set(CMAKE_OSX_ARCHITECTURES \"${osx}\" CACHE STRING \"\" FORCE)\nset(CMAKE_OSX_DEPLOYMENT_TARGET \"${DEP_MACOS_DEPLOYMENT_TARGET}\" CACHE STRING \"\" FORCE)\n")
-        list(APPEND cfg -C "${BUILD}/osx_arch.cmake")
+        file(WRITE "${BUILD}/init.cmake" "${_init}")
+        list(APPEND cfg -C "${BUILD}/init.cmake")
     endif()
     _bd_run(${CMAKE_COMMAND} ${cfg})
     _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config RelWithDebInfo --target install --parallel)
