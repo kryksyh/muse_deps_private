@@ -1,8 +1,11 @@
-# Windows/MSVC build of opusfile (no upstream CMake; autotools can't run).
-# Builds a static opusfile.lib, decode-only (no http -> no openssl). A static
-# lib only needs ogg/opus HEADERS to compile (the app links the actual ogg/opus
-# libs via the consume targets), so we just add the dep include dirs — no
-# find_package/link. Runs in build_dep scope: SRC/INSTALL/BD_DEPENDS_PREFIXES.
+# Cross-platform build of opusfile (LAME-style: no upstream CMake, and autotools
+# can't run on MSVC, so one CMake build for every platform). Builds a static
+# opusfile lib, decode-only (no http -> no openssl, no config.h needed since
+# HAVE_CONFIG_H is left undefined). The four libopusfile_la_SOURCES; http.c/
+# wincerts.c are the separate libopusurl. A static lib only needs ogg/opus HEADERS
+# to compile (the app links the actual ogg/opus libs via the consume targets), so
+# we just add the dep include dirs — no find_package/link. Runs in build_dep
+# scope: SRC/INSTALL/BD_DEPENDS_PREFIXES.
 
 set(_dep_incs "")
 foreach(p ${BD_DEPENDS_PREFIXES})
