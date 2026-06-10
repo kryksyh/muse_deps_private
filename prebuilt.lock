@@ -48,11 +48,11 @@ vorbis 1.3.7 linux x86_64 vorbis-1.3.7-linux-x86_64-ce454d679c83.7z 7cd7c9d38fee
 vorbis 1.3.7 macos universal vorbis-1.3.7-macos-universal-48ab7a94c0f5.7z 800552381a5af97b37b3304e1946f1a99e69c18a13ce2eb4d15c81359ed5ee1e
 vorbis 1.3.7 windows aarch64 vorbis-1.3.7-windows-aarch64-2b226639b46d.7z 9e75d194a3c68bc7de5ca7c72dd957e38f57eda98497c9e555114454287261e4
 vorbis 1.3.7 windows x86_64 vorbis-1.3.7-windows-x86_64-440bed706d6e.7z 35c93767f2e870f0e6688d6731a46dfab12be57c0231919f695a953df67a142b
-wavpack 5.7.0 linux aarch64 wavpack-5.7.0-linux-aarch64-e647b8294bbc.7z 4fee6ca2fd4032739666ce09bba3dfbed1c47072ea251b8afd4e58b1ed0b48f2
-wavpack 5.7.0 linux x86_64 wavpack-5.7.0-linux-x86_64-5481d352480d.7z 6ea5f4caaf1a276b5ba6ce35088654a70f3139602c0d560621d467c69a20fe33
-wavpack 5.7.0 macos universal wavpack-5.7.0-macos-universal-45dcecc05c43.7z 1d4d8d08053f492f634d490fbe82c98ef2badd8b8b277b9a290bda2ee27ff042
-wavpack 5.7.0 windows aarch64 wavpack-5.7.0-windows-aarch64-f7970f884133.7z c7dc1c1b3fa7875da093e211e6364f6956f4308999dcb8009b06e26829efda7b
-wavpack 5.7.0 windows x86_64 wavpack-5.7.0-windows-x86_64-08bff08e7f33.7z 63b393d1d4e3765562d8bfbd61b5a4386364b8751b735157d5796a55f4660b70
+wavpack 5.7.0 linux aarch64 wavpack-5.7.0-linux-aarch64-f3f0dd8f63d1.7z aa5306213e99e139003b7ee179b3adc0f5fec99502d40b3bb31941528a1cb4c1
+wavpack 5.7.0 linux x86_64 wavpack-5.7.0-linux-x86_64-2c5f0100c8af.7z df04812d88c89f18d37ac79c7ff1f643cfffba53b179af639148026ad3ca0da6
+wavpack 5.7.0 macos universal wavpack-5.7.0-macos-universal-ef8ddda1191e.7z 5c65352cbfc00d3dd19bc363d086619dbd5f340800ed57d13d7a256114ce238c
+wavpack 5.7.0 windows aarch64 wavpack-5.7.0-windows-aarch64-e358dc04d9fd.7z 3a05a47ee2c8891d60d26985e3b5c2561f35dd9f8e6c9fab5d2d65e5aea5c3f2
+wavpack 5.7.0 windows x86_64 wavpack-5.7.0-windows-x86_64-cefd86745e75.7z 644c67fff2d534772d4a0aa0c085039f10ea1964551444ec388a52b21acb23e3
 wxwidgets 3.2.6 linux aarch64 wxwidgets-3.2.6-linux-aarch64-1239f3170bdc.7z 101cac39295b1110381ddad5def14657a936df1e11fe0e768d9dd6a1b73e1cee
 wxwidgets 3.2.6 linux x86_64 wxwidgets-3.2.6-linux-x86_64-4de9e198792e.7z f5a4e19b50f3ab4d435db1b72917812e04cb35abe85c9e93d007d127f258f27d
 wxwidgets 3.2.6 macos universal wxwidgets-3.2.6-macos-universal-b16141fa3642.7z caa1d7380a53319b3fa088b6f6889b0148c7a34e7a7053ca1bd56c2080d30313
