@@ -8,5 +8,7 @@ set(DEP_CMAKE_ARGS
     -DPA_BUILD_STATIC=OFF
 )
 
+set(DEP_PATCHES_WINDOWS patch/0001-windows-loopback-and-mixer-exports.patch)
+
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES LICENSE.txt)
