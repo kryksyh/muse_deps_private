@@ -38,11 +38,11 @@ opusfile 0.12 linux x86_64 opusfile-0.12-linux-x86_64-6be92f97428e.7z 70dd89ac68
 opusfile 0.12 macos universal opusfile-0.12-macos-universal-a51725b13e72.7z da362a85b3a013dd6ab914a20c02004baabb50e89418f7e14650c0875909f2aa
 opusfile 0.12 windows aarch64 opusfile-0.12-windows-aarch64-070c1ca90131.7z 7878d446fb4206149edd8f78791b1b68c0268aa9d25717207da6e39d3ef4e60e
 opusfile 0.12 windows x86_64 opusfile-0.12-windows-x86_64-f0973da7dbbc.7z 56d5ec00092c594502735a0db622c4aa65b6ec56ba59e8b6debcce5f4d4cec6a
-portaudio 19.7.0 linux aarch64 portaudio-19.7.0-linux-aarch64-2d4045302e5a.7z 0ba5f0bfb712d9318ff47c509b2445b63c98536897a6034fa2d2b2d906a790aa
-portaudio 19.7.0 linux x86_64 portaudio-19.7.0-linux-x86_64-b1c6fcc153e9.7z 885930a0b3b9e0749b058fd859193eb21a1486215fc700dab408c3fba534fb51
-portaudio 19.7.0 macos universal portaudio-19.7.0-macos-universal-10aff1e30abe.7z a40ced9f159a000a3f1545b204f19bfb03b334acd3ffe93510c5cd55264c417d
-portaudio 19.7.0 windows aarch64 portaudio-19.7.0-windows-aarch64-a095d2d8e903.7z cc512969557ea591214e8575fd8291cad8a28782c6ccc763264a46d77ffbf8bf
-portaudio 19.7.0 windows x86_64 portaudio-19.7.0-windows-x86_64-7b3c6caed655.7z 8137e61491013f2803f5ec90889192170c47f181f528f198b5af3f3c7d606189
+portaudio 19.7.0 linux aarch64 portaudio-19.7.0-linux-aarch64-17b116abe200.7z 6f0cdf4c39fa8d979bfb491fc69044d0b355c548a8cdb87a28d4c70bc0fe71d6
+portaudio 19.7.0 linux x86_64 portaudio-19.7.0-linux-x86_64-e66ac2297df4.7z 306d614922337731b6d6cef30f6011adbadc2ba957301388a4e7cf33104e045e
+portaudio 19.7.0 macos universal portaudio-19.7.0-macos-universal-8baa1849f9fd.7z bc93ea30546fec76dc2e6d557afd3dad348f392e10eaaac1ff0bccb3f7449093
+portaudio 19.7.0 windows aarch64 portaudio-19.7.0-windows-aarch64-09c295706836.7z dfa4526fbcaa0c22aaadc2e1abf8dd441d2da90bdc07ef3131917124f66722db
+portaudio 19.7.0 windows x86_64 portaudio-19.7.0-windows-x86_64-b80743a90bad.7z fa91352e65ee7debdab1149df5b8d923a8a382ecb4b217931a1bb4ac03e6c1fe
 vorbis 1.3.7 linux aarch64 vorbis-1.3.7-linux-aarch64-f25bbb776b03.7z a221de2cf806f64558aecf9cbc534e2c2c199f6b70b1d97e9bb2b8c01aa52b56
 vorbis 1.3.7 linux x86_64 vorbis-1.3.7-linux-x86_64-ce454d679c83.7z 7cd7c9d38feea76ae1eb617a3d77ed7afe9a3e615505876fb36e7b7d1e0c15c2
 vorbis 1.3.7 macos universal vorbis-1.3.7-macos-universal-48ab7a94c0f5.7z 800552381a5af97b37b3304e1946f1a99e69c18a13ce2eb4d15c81359ed5ee1e
