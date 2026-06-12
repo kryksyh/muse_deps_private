@@ -1,12 +1,10 @@
-# Pinned version — single source of truth for this dep.
+# Pinned version — single source of truth for this dep (the consumer reads it;
+# the muse_deps ref pins the whole set atomically).
 set(DEP_VERSION 2.0.3)
 
-# Source-delivery: the consumer compiles it in-tree (muse audio export).
-set(DEP_KIND source)
-
-function(fdk_aac_materialize)
-    get_property(_src GLOBAL PROPERTY fdk-aac_SOURCE_DIR)
-    if(NOT TARGET fdk-aac)
-        add_subdirectory("${_src}/fdk-aac" fdk-aac EXCLUDE_FROM_ALL)
-    endif()
-endfunction()
+# Consume metadata for fdk-aac (read by buildtools/consume.cmake). Build recipe: fdk-aac/<version>/recipe/spec.cmake.
+set(DEP_TARGET fdk-aac::fdk-aac)
+set(DEP_LIBS fdk-aac)
+set(DEP_INCLUDE_SUBDIRS fdk-aac)
+set(DEP_SYSTEM_HEADER fdk-aac/aacenc_lib.h)
+set(DEP_SYSTEM_LIBS fdk-aac)
