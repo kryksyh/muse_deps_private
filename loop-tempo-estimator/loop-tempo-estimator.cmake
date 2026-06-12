@@ -10,7 +10,7 @@ set(DEP_KIND source)
 # is forbidden in deferred execution; it must also run AFTER au3wrap so the
 # project reuses the consumer's pffft instead of fetching its bundled fallback).
 # Project CMake lives under <tree>/source.
-function(loop-tempo-estimator_materialize)
+function(loop_tempo_estimator_materialize)
     get_property(_src GLOBAL PROPERTY loop-tempo-estimator_SOURCE_DIR)
     if(NOT TARGET loop-tempo-estimator)
         add_subdirectory("${_src}/loop-tempo-estimator/source" loop-tempo-estimator EXCLUDE_FROM_ALL)
