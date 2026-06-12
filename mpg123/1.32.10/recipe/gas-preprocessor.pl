@@ -1193,6 +1193,9 @@ sub handle_serialized_line {
     }
     if ($as_type eq "armasm") {
         $line =~ s/\.global/EXPORT/x;
+        # mpg123 writes .globl and .balign (FFmpeg sources never do)
+        $line =~ s/\.globl\b/EXPORT/x;
+        $line =~ s/\.balign/ALIGN/x;
         $line =~ s/\.extern/IMPORT/x;
         if ($thumb) {
             # Translate .inst into a 16 bit thumb instruction word
