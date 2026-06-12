@@ -9,6 +9,9 @@ set(DEP_KIND source)
 function(harfbuzz_materialize)
     get_property(_src GLOBAL PROPERTY harfbuzz_SOURCE_DIR)
     if(NOT TARGET harfbuzz)
+        # Statically linked into the consumer; installing would drag the
+        # consumer's freetype target into an export set it isn't part of.
+        set(SKIP_INSTALL_ALL ON)
         add_subdirectory("${_src}/harfbuzz" harfbuzz)
     endif()
 endfunction()
