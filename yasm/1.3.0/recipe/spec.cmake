@@ -1,0 +1,14 @@
+# Build recipe for yasm 1.3.0 — host assembler tool.
+
+set(DEP_SOURCE_URL    "https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz")
+set(DEP_SOURCE_SHA256 "3dce6601b495f5b3d45b59f7d2492a340ee7e84b5beca17e48f862502bd5603f")
+
+# Static libyasm: the tool must run standalone from its bin dir.
+set(DEP_CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF)
+
+set(DEP_PATCHES patch/0001-cmake-updates.patch)
+
+# Only consumed on Windows-x86_64 (mpg123 asm); elsewhere gas assembles directly.
+set(DEP_PLATFORMS windows-x86_64)
+
+set(DEP_LICENSE_FILES COPYING)

@@ -46,7 +46,7 @@ foreach(_s ${_specs})
     get_filename_component(_ndir "${_vdir}" DIRECTORY) # .../<name>
     get_filename_component(_v "${_vdir}" NAME)
     get_filename_component(_n "${_ndir}" NAME)
-    # Source-delivery deps ship in the source bundle, not as prebuilt archives.
+    # Source-delivery ships in source form; tools are built for PATH, not packaged.
     unset(DEP_KIND)
     if(EXISTS "${_ndir}/${_n}.cmake")
         include("${_ndir}/${_n}.cmake")
@@ -61,9 +61,29 @@ foreach(_s ${_specs})
         list(GET _p 0 _dn)
         list(APPEND _DEPS_${_n} "${_dn}")
     endforeach()
-    list(APPEND ALL "${_n}")
+    if(DEP_KIND STREQUAL "tool")
+        list(APPEND TOOLS "${_n}")
+    else()
+        list(APPEND ALL "${_n}")
+    endif()
 endforeach()
 list(REMOVE_DUPLICATES ALL)
+
+# Build-time tools on PATH before the libs (DEP_PLATFORMS already restricted
+# them to this platform). Never packaged.
+if(OS STREQUAL "windows")
+    set(_sep ";")
+else()
+    set(_sep ":")
+endif()
+foreach(_t ${TOOLS})
+    message(STATUS "[platform] tool ${_t}/${_VER_${_t}}")
+    build_dep(NAME ${_t} RECIPE_DIR "${REPO_ROOT}/${_t}/${_VER_${_t}}/recipe"
+              OS ${OS} ARCH ${ARCH}
+              WORK "${REPO_ROOT}/.build/platform/work/${_t}"
+              INSTALL_DIR "${REPO_ROOT}/.build/platform/tools/${_t}")
+    set(ENV{PATH} "${REPO_ROOT}/.build/platform/tools/${_t}/bin${_sep}$ENV{PATH}")
+endforeach()
 
 # Build in dependency order: a dep is built once all its DEP_DEPENDS are staged.
 set(DONE "")

@@ -9,7 +9,7 @@
 # local_path; any miss or failure falls back to building from source.
 #
 # Metadata keys (beyond the spec's source URL/SHA, deps, patches, cmake args):
-#   DEP_KIND              library | source                (default: library)
+#   DEP_KIND              library | source | tool         (default: library)
 #   DEP_TARGET            imported target name (e.g. Opus::opus)
 #   DEP_LIBS              base lib name(s), unix (e.g. "opus", "vorbis vorbisenc vorbisfile")
 #   DEP_TARGETS           multi-target deps only: a list of "target|libs" entries
@@ -406,6 +406,19 @@ function(muse_consume name version mode local_path os arch)
 
     elseif(DEP_KIND STREQUAL "source")
         _muse_populate_source("${name}" "${local_path}" "${version}")
+
+    elseif(DEP_KIND STREQUAL "tool")
+        if(mode STREQUAL "system")
+            find_program(${name}_EXE NAMES ${name})
+            if(NOT ${name}_EXE)
+                message(FATAL_ERROR "[${name}] system tool not found (USE_SYSTEM)")
+            endif()
+            get_filename_component(_d "${${name}_EXE}" DIRECTORY)
+            set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${_d}")
+        else()
+            _muse_build("${name}" "${version}" "${local_path}" "${os}" "${arch}")
+            set_property(GLOBAL PROPERTY ${name}_BIN_DIR "${local_path}/bin")
+        endif()
 
     else()
         message(FATAL_ERROR "[${name}] unknown DEP_KIND: ${DEP_KIND}")

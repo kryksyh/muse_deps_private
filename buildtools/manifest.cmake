@@ -123,6 +123,29 @@ function(require_dep name)
     set(${name}_INSTALL_LIBRARIES ${instal_libraries} PARENT_SCOPE)
 endfunction()
 
+# Build-time tools (host executables a dep needs while building, e.g. yasm for
+# mpg123's x86/x64 asm decoder). Build (or find) the tool, then prepend its bin/
+# to PATH so later dep builds' find_program() locate it. Must precede the deps
+# that need it in the manifest. Honors MUSE_USE_SYSTEM_<NAME> to use a system tool.
+function(require_tool name)
+    string(TOUPPER ${name} name_upper)
+    set(mode "rebuild")
+    if (MUSE_USE_SYSTEM_ALL OR MUSE_USE_SYSTEM_${name_upper})
+        set(mode "system")
+    endif()
+    _muse_run("${name}" "" "${mode}" version)
+
+    get_property(bindir GLOBAL PROPERTY ${name}_BIN_DIR)
+    if (bindir)
+        if (WIN32)
+            set(ENV{PATH} "${bindir};$ENV{PATH}")
+        else()
+            set(ENV{PATH} "${bindir}:$ENV{PATH}")
+        endif()
+        message(STATUS "[tool] ${name} available on PATH (${bindir})")
+    endif()
+endfunction()
+
 # Source-delivery deps: muse_deps ships a pinned source tree the consumer
 # compiles in-tree. Populated eagerly — gate conditional deps in the manifest.
 # Exposes the ${name}_SOURCE_DIR global; metadata may provide a materialize fn.
