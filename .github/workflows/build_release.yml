@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: "all | comma list of: macos,windows,woa,linux,linux-arm64"
+        description: "all | comma list of: macos,macos-arm64,macos-x86_64,windows,woa,linux,linux-arm64"
         required: true
         default: all
 
@@ -23,7 +23,7 @@ jobs:
       - id: set
         shell: bash
         run: |
-          P="${{ inputs.platforms }}"; [ "$P" = "all" ] && P="macos,windows,woa,linux,linux-arm64"
+          P="${{ inputs.platforms }}"; [ "$P" = "all" ] && P="macos,macos-arm64,macos-x86_64,windows,woa,linux,linux-arm64"
           inc=""; add() { inc="$inc${inc:+,}$1"; }
           IFS=',' read -ra arr <<< "$P"
           for p in "${arr[@]}"; do case "$(echo "$p"|xargs)" in
@@ -32,6 +32,8 @@ jobs:
             windows)     add '{"os":"windows","arch":"x86_64","runner":"windows-2022"}' ;;
             woa)         add '{"os":"windows","arch":"aarch64","runner":"windows-11-arm"}' ;;
             macos)       add '{"os":"macos","arch":"universal","runner":"macos-26"}' ;;
+            macos-arm64) add '{"os":"macos","arch":"aarch64","runner":"macos-26"}' ;;
+            macos-x86_64) add '{"os":"macos","arch":"x86_64","runner":"macos-26"}' ;;
           esac; done
           echo "matrix={\"include\":[$inc]}" >> "$GITHUB_OUTPUT"
 
