@@ -114,11 +114,29 @@ foreach(_n ${ALL})
     string(SUBSTRING "${_sig}" 0 12 _sig)
     set(_file "${_n}-${_VER_${_n}}-${OS}-${ARCH}-${_sig}.7z")
     message(STATUS "[platform] package ${_file}")
-    execute_process(COMMAND ${SEVENZIP} a -t7z "${OUT_DIR}/${_file}" . -x!.build_stamp
+    # -mf=off: no BCJ branch filters — 7z's ARM64 filter is not decodable by
+    # CMake's libarchive, which then SILENTLY skips those entries on extract.
+    execute_process(COMMAND ${SEVENZIP} a -t7z -mf=off "${OUT_DIR}/${_file}" . -x!.build_stamp
                     WORKING_DIRECTORY "${STAGE}/${_n}" RESULT_VARIABLE _rc)
     if(NOT _rc EQUAL 0)
         message(FATAL_ERROR "[platform] package ${_n} failed (${_rc})")
     endif()
+    # Consumers extract with file(ARCHIVE_EXTRACT), which does not fail on
+    # entries it cannot decode — prove round-trip completeness here.
+    set(_vdir "${OUT_DIR}/.verify")
+    file(REMOVE_RECURSE "${_vdir}")
+    file(MAKE_DIRECTORY "${_vdir}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf "${OUT_DIR}/${_file}"
+                    WORKING_DIRECTORY "${_vdir}" RESULT_VARIABLE _rc)
+    file(GLOB_RECURSE _staged "${STAGE}/${_n}/*")
+    file(GLOB_RECURSE _extracted "${_vdir}/*")
+    list(LENGTH _staged _ns)
+    list(LENGTH _extracted _ne)
+    math(EXPR _ns "${_ns} - 1")   # .build_stamp is excluded from the archive
+    if(NOT _rc EQUAL 0 OR NOT _ns EQUAL _ne)
+        message(FATAL_ERROR "[platform] ${_file}: cmake extracted ${_ne}/${_ns} files — archive not consumable")
+    endif()
+    file(REMOVE_RECURSE "${_vdir}")
     file(SHA256 "${OUT_DIR}/${_file}" _sha)
     string(APPEND _lock "${_n} ${_VER_${_n}} ${OS} ${ARCH} ${_file} ${_sha}\n")
 endforeach()
