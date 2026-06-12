@@ -1,9 +1,8 @@
-Audacity commit 1f27ad932c
-Subject: Reapply a3afdf80d00c68dddba6aa66829ac296891bf2d4
-Reapplies: a3afdf80d00c68dddba6aa66829ac296891bf2d4 lib-src/libnyquist: fix warning about always-false comparison...
+Audacity commit a3afdf80d0
+Subject: lib-src/libnyquist: fix warning about always-false comparison...
 
 diff --git a/nyquist/nyqstk/src/Delay.cpp b/nyquist/nyqstk/src/Delay.cpp
-index 3472921..3749868 100644
+index 94c5a7dcaf..9ec5fc61db 100644
 --- a/nyquist/nyqstk/src/Delay.cpp
 +++ b/nyquist/nyqstk/src/Delay.cpp
 @@ -72,12 +72,15 @@ void Delay :: setMaximumDelay(unsigned long delay)

@@ -1,9 +1,9 @@
-Audacity commit 9d61ee437a
-Subject: Reapply 016919a53bb8f17de2a9070fbe84ed88fb27e175
-Reapplies: 016919a53bb8f17de2a9070fbe84ed88fb27e175 Bug1223: (correction).  Fix new potential crash in following pointer.
+Audacity commit 016919a53b
+Subject: Bug1223: (correction).  Fix new potential crash in following pointer.
+Rebased onto r331 during the 2021 sync (reapply commit 9d61ee437a); the original diff predates upstream r288-r331 changes.
 
 diff --git a/nyquist/nyqsrc/sound.c b/nyquist/nyqsrc/sound.c
-index 0a9e9f3..6078502 100644
+index 0a9e9f3eb0..6078502dea 100644
 --- a/nyquist/nyqsrc/sound.c
 +++ b/nyquist/nyqsrc/sound.c
 @@ -545,6 +545,7 @@ void snd_list_unref(snd_list_type list)

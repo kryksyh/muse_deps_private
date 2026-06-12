@@ -1,9 +1,9 @@
-Audacity commit f678aa44f9
-Subject: Reapply 132173badfe9315e94ab30fb19d366adbc63e826
-Reapplies: 132173badfe9315e94ab30fb19d366adbc63e826 cppcheck: fix 2 reports
+Audacity commit 132173badf
+Subject: cppcheck: fix 2 reports
+Rebased onto r331 during the 2021 sync (reapply commit f678aa44f9); the original diff predates upstream r288-r331 changes.
 
 diff --git a/nyquist/nyqsrc/sndwritepa.c b/nyquist/nyqsrc/sndwritepa.c
-index dad1d81..f9453a9 100644
+index dad1d812d6..f9453a9bbf 100644
 --- a/nyquist/nyqsrc/sndwritepa.c
 +++ b/nyquist/nyqsrc/sndwritepa.c
 @@ -302,7 +302,7 @@ long lookup_format(long format, long mode, long bits, long swap)

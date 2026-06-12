@@ -1,9 +1,9 @@
-Audacity commit d8b878f163
-Subject: Reapply 5aa70545d56d4b53fa740afcf066725101d746b5
-Reapplies: 5aa70545d56d4b53fa740afcf066725101d746b5 Use casts with function pointers to quiet compilation warnings in Nyquist
+Audacity commit 5aa70545d5
+Subject: Use casts with function pointers to quiet compilation warnings in Nyquist
+Rebased onto r331 during the 2021 sync (reapply commit d8b878f163); the original diff predates upstream r288-r331 changes.
 
 diff --git a/nyquist/nyqsrc/sound.h b/nyquist/nyqsrc/sound.h
-index 9f406a9..328a8af 100644
+index 9f406a9654..328a8af92c 100644
 --- a/nyquist/nyqsrc/sound.h
 +++ b/nyquist/nyqsrc/sound.h
 @@ -274,12 +274,19 @@ typedef struct {

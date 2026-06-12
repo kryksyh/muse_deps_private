@@ -1,9 +1,9 @@
-Audacity commit 9b77109eff
-Subject: Reapply e6d069787bb0c010c7afb55841754fb85dd123e0
-Reapplies: e6d069787bb0c010c7afb55841754fb85dd123e0 Fix mistake in commit a1dc830 and add a comment
+Audacity commit e6d069787b
+Subject: Fix mistake in commit a1dc830 and add a comment
+Rebased onto r331 during the 2021 sync (reapply commit 9b77109eff); the original diff predates upstream r288-r331 changes.
 
 diff --git a/nyquist/xlisp/xlftab.c b/nyquist/xlisp/xlftab.c
-index d3acb34..b696955 100644
+index d3acb34b19..b6969553b6 100644
 --- a/nyquist/xlisp/xlftab.c
 +++ b/nyquist/xlisp/xlftab.c
 @@ -12,6 +12,7 @@ HISTORY
@@ -58,7 +58,7 @@ index d3acb34..b696955 100644
  /* xnotimp does not return anything on purpose, so disable
   * "no return value" warning
 diff --git a/nyquist/xlisp/xlimage.c b/nyquist/xlisp/xlimage.c
-index a4e7933..e4ec770 100644
+index a4e7933232..e4ec770274 100644
 --- a/nyquist/xlisp/xlimage.c
 +++ b/nyquist/xlisp/xlimage.c
 @@ -182,7 +182,7 @@ int xlisave(const char *fname)
@@ -71,7 +71,7 @@ index a4e7933..e4ec770 100644
      unsigned char *cp;
      int n,i,max,type;
 diff --git a/nyquist/xlisp/xlinit.c b/nyquist/xlisp/xlinit.c
-index 5a92610..8bec282 100644
+index 5a92610ef2..8bec28200a 100644
 --- a/nyquist/xlisp/xlinit.c
 +++ b/nyquist/xlisp/xlinit.c
 @@ -41,7 +41,7 @@ extern LVAL a_fixnum,a_flonum,a_string,a_stream,a_object;
@@ -84,7 +84,7 @@ index 5a92610..8bec282 100644
  /* forward declarations */
  FORWARD LOCAL void initwks(void);
 diff --git a/nyquist/xlisp/xlisp.h b/nyquist/xlisp/xlisp.h
-index 63566e8..0c2ccef 100644
+index 63566e8dc8..0c2ccef078 100644
 --- a/nyquist/xlisp/xlisp.h
 +++ b/nyquist/xlisp/xlisp.h
 @@ -683,6 +683,13 @@ void xlinit(void);
@@ -102,7 +102,7 @@ index 63566e8..0c2ccef 100644
  
  int xlgetc(LVAL fptr);
 diff --git a/nyquist/xlisp/xlobj.c b/nyquist/xlisp/xlobj.c
-index e516410..6713849 100644
+index e5164107f3..6713849f3d 100644
 --- a/nyquist/xlisp/xlobj.c
 +++ b/nyquist/xlisp/xlobj.c
 @@ -88,7 +88,7 @@ void xladdivar(LVAL cls, const char *var)
@@ -115,7 +115,7 @@ index e516410..6713849 100644
  
      /* enter the message selector */
 diff --git a/nyquist/xlisp/xlprin.c b/nyquist/xlisp/xlprin.c
-index 42dd296..260363f 100644
+index 42dd29682c..260363fafd 100644
 --- a/nyquist/xlisp/xlprin.c
 +++ b/nyquist/xlisp/xlprin.c
 @@ -21,7 +21,7 @@
@@ -128,7 +128,7 @@ index 42dd296..260363f 100644
  
  LOCAL void putsymbol(LVAL fptr, char *str, int escflag);
 diff --git a/nyquist/xlisp/xlread.c b/nyquist/xlisp/xlread.c
-index 9419dd9..2c08c10 100644
+index 9419dd9e77..2c08c10f6f 100644
 --- a/nyquist/xlisp/xlread.c
 +++ b/nyquist/xlisp/xlread.c
 @@ -932,7 +932,7 @@ int xlisnumber(char *str, LVAL *pval)

@@ -1,9 +1,8 @@
-Audacity commit 19494d6277
-Subject: Reapply 2fec472ba2b4e8df797d7dac2528d8ccbdaea44c
-Reapplies: 2fec472ba2b4e8df797d7dac2528d8ccbdaea44c lib-src/libnyquist: eliminate register local variables
+Audacity commit 2fec472ba2
+Subject: lib-src/libnyquist: eliminate register local variables
 
 diff --git a/nyquist/nyqstk/src/Delay.cpp b/nyquist/nyqstk/src/Delay.cpp
-index 1b5a0e0..3472921 100644
+index b5e3a3fcd4..94c5a7dcaf 100644
 --- a/nyquist/nyqstk/src/Delay.cpp
 +++ b/nyquist/nyqstk/src/Delay.cpp
 @@ -119,19 +119,19 @@ unsigned long Delay :: getDelay(void) const
@@ -31,7 +30,7 @@ index 1b5a0e0..3472921 100644
      }
    }
 diff --git a/nyquist/nyqstk/src/Stk.cpp b/nyquist/nyqstk/src/Stk.cpp
-index 6040237..7e21bfa 100644
+index 6040237f16..7e21bfae9b 100644
 --- a/nyquist/nyqstk/src/Stk.cpp
 +++ b/nyquist/nyqstk/src/Stk.cpp
 @@ -48,7 +48,7 @@ void Stk :: setRawwavePath( std::string path )
