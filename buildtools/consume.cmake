@@ -243,8 +243,19 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
         return()
     endif()
     string(REPLACE " " ";" entry "${entry}")
+    list(GET entry 2 lock_os)
+    list(GET entry 3 lock_arch)
     list(GET entry 4 file)
     list(GET entry 5 sha)
+
+    # A lock line older than the local recipe must not be consumed: the archive
+    # name embeds the recipe signature.
+    _bd_recipe_sig("${_MUSE_DEPS_ROOT}/${name}/${version}/recipe" "${lock_os}" "${lock_arch}" _cursig)
+    string(SUBSTRING "${_cursig}" 0 12 _cursig)
+    if(NOT file MATCHES "-${_cursig}\\.7z$")
+        message(STATUS "[${name}] lock entry ${file} doesn't match the local recipe (${_cursig}) — building from source")
+        return()
+    endif()
 
     set(stamp "${local_path}/.prebuilt")
     if(EXISTS "${stamp}")
