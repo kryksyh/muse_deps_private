@@ -1,9 +1,10 @@
 # Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically). Audacity tracked upstream
-# SVN r331 = 3.16 release + two trivial commits; the patch carries those plus
-# Audacity's accumulated local changes (BSD ports, bug fixes, msvc compat).
-# Updating nyquist = bump the pin to the next nyqsrcNNN.zip and rebase the patch.
-set(DEP_VERSION 3.16)
+# the muse_deps ref pins the whole set atomically). The pin is upstream SVN
+# r331, the exact revision Audacity last synced to (Jan 2021) — sourceforge
+# generates the snapshot on demand, so after the first producer run the release
+# mirror is the durable source. Updating nyquist = bump the pin and replay the
+# patch series; hunks that fail or turn empty were absorbed upstream.
+set(DEP_VERSION r331)
 
 # Source-delivery: Audacity's libnyquist wrapper compiles the engine subset
 # in-tree (cmt cmupv ffts nyqsrc nyqstk sys tran xlisp); nyx (the Audacity
