@@ -2,7 +2,7 @@
 # the muse_deps ref pins the whole set atomically).
 set(DEP_VERSION 3.100)
 
-# Consume metadata for libmp3lame (read by buildtools/consume.cmake). Build recipe: libmp3lame/<version>/recipe/spec.cmake.
+# Consume metadata for lame (read by buildtools/consume.cmake). Build recipe: lame/<version>/recipe/spec.cmake.
 # Shared on unix; static (mp3lame.lib) on Windows.
 set(DEP_TARGET libmp3lame::libmp3lame)
 set(DEP_LIBS mp3lame)
