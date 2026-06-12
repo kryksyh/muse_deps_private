@@ -1,6 +1,6 @@
 # Downloads every dep's pristine source tarball (from each recipe spec.cmake,
 # incl. source-delivery DEP_SOURCES entries), verifies its SHA-256, and stages it
-# as .build/mirror/<name>-<archive>. The producer attaches these to each dated
+# as .build/mirror/<name>-<version>-src.<ext> (per-entry: <name>-<subdir>-src.<ext>). The producer attaches these to each dated
 # release: they are the corresponding sources of the published binaries AND the
 # fallback mirror build_dep_lib uses when upstream is down.
 #
@@ -13,13 +13,17 @@ set(OUT "${REPO}/.build/mirror")
 file(REMOVE_RECURSE "${OUT}")
 file(MAKE_DIRECTORY "${OUT}")
 
-function(_mirror_fetch name url sha)
+include("${CMAKE_CURRENT_LIST_DIR}/build_dep_lib.cmake")   # _bd_src_ext
+
+# Stage <url> as <label>-src.<ext> — our naming, not the upstream basename.
+function(_mirror_fetch label url sha)
     get_filename_component(an "${url}" NAME)
-    set(dst "${OUT}/${name}-${an}")
+    _bd_src_ext("${an}" ext)
+    set(dst "${OUT}/${label}-src.${ext}")
     if(EXISTS "${dst}")
         return()   # already mirrored (another version dir of the same dep)
     endif()
-    message(STATUS "[mirror] ${name}: ${url}")
+    message(STATUS "[mirror] ${label}: ${url}")
     file(DOWNLOAD "${url}" "${dst}" STATUS st)
     list(GET st 0 c)
     if(c EQUAL 0)
@@ -27,10 +31,10 @@ function(_mirror_fetch name url sha)
         if(got STREQUAL "${sha}")
             return()
         endif()
-        message(WARNING "[mirror] ${name}/${an}: sha256 ${got} != ${sha}")
+        message(WARNING "[mirror] ${label}: sha256 ${got} != ${sha}")
     endif()
     file(REMOVE "${dst}")
-    message(FATAL_ERROR "[mirror] ${name} download failed: ${st}")
+    message(FATAL_ERROR "[mirror] ${label} download failed: ${st}")
 endfunction()
 
 # Mirror one recipe's sources (function scope isolates the DEP_* it sets):
@@ -38,17 +42,24 @@ endfunction()
 function(_mirror_one spec)
     include("${spec}")
     file(RELATIVE_PATH rel "${REPO}" "${spec}")
-    string(REGEX REPLACE "/.*" "" name "${rel}")
+    string(REPLACE "/" ";" relparts "${rel}")
+    list(GET relparts 0 name)
+    list(GET relparts 1 version)
     if(DEFINED DEP_SOURCE_URL AND DEFINED DEP_SOURCE_SHA256)
-        _mirror_fetch("${name}" "${DEP_SOURCE_URL}" "${DEP_SOURCE_SHA256}")
+        _mirror_fetch("${name}-${version}" "${DEP_SOURCE_URL}" "${DEP_SOURCE_SHA256}")
     endif()
     foreach(e ${DEP_SOURCES})
         string(REPLACE "|" ";" f "${e}")
+        list(GET f 0 sub)
         list(GET f 1 kind)
         if(kind STREQUAL "tarball")
             list(GET f 2 loc)
             list(GET f 3 sha)
-            _mirror_fetch("${name}" "${loc}" "${sha}")
+            if(sub STREQUAL name)
+                _mirror_fetch("${name}-${version}" "${loc}" "${sha}")
+            else()
+                _mirror_fetch("${name}-${sub}" "${loc}" "${sha}")
+            endif()
         endif()
     endforeach()
 endfunction()

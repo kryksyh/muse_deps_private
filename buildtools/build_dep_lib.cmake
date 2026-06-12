@@ -23,6 +23,17 @@ function(_bd_resolve_cache out)
     endif()
 endfunction()
 
+# Archive extension of an upstream basename (tar.gz / tar.xz / tar.bz2 / tgz / zip).
+function(_bd_src_ext basename out)
+    if(basename MATCHES "\\.(tar\\.gz|tar\\.xz|tar\\.bz2|tgz|zip)$")
+        set(${out} "${CMAKE_MATCH_1}" PARENT_SCOPE)
+    else()
+        get_filename_component(_e "${basename}" LAST_EXT)
+        string(REGEX REPLACE "^\\." "" _e "${_e}")
+        set(${out} "${_e}" PARENT_SCOPE)
+    endif()
+endfunction()
+
 # Source mirror tried when upstream fails: $MUSE_DEPS_MIRROR, else the dated
 # release recorded for <name> in prebuilt.lock (sources are attached alongside
 # the prebuilt archives; assets are named <name>-<archive>). Empty when neither
@@ -278,10 +289,13 @@ function(build_dep)
         file(MAKE_DIRECTORY "${dl_dir}")
         message(STATUS "[${BD_NAME}] fetch ${DEP_SOURCE_URL}")
         get_filename_component(_rroot "${BD_RECIPE_DIR}/../../.." ABSOLUTE)
+        get_filename_component(_vdir "${BD_RECIPE_DIR}" DIRECTORY)
+        get_filename_component(_ver "${_vdir}" NAME)
         _bd_mirror("${BD_NAME}" "${_rroot}" _mirror)
         set(_urls "${DEP_SOURCE_URL}")
         if(_mirror)
-            list(APPEND _urls "${_mirror}/${BD_NAME}-${an}")
+            _bd_src_ext("${an}" _ext)
+            list(APPEND _urls "${_mirror}/${BD_NAME}-${_ver}-src.${_ext}")
         endif()
         _bd_fetch("${archive}" "${DEP_SOURCE_SHA256}" ${_urls})
     endif()
