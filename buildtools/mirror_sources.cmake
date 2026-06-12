@@ -53,7 +53,9 @@ function(_mirror_one spec)
     endforeach()
 endfunction()
 
-file(GLOB_RECURSE specs "${REPO}/*/recipe/spec.cmake")
+# NB: GLOB_RECURSE does not expand intermediate */ components — recurse on the
+# bare filename like build_platform does.
+file(GLOB_RECURSE specs "${REPO}/spec.cmake")
 foreach(spec ${specs})
     _mirror_one("${spec}")
 endforeach()
