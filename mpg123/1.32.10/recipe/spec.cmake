@@ -13,5 +13,11 @@ set(DEP_CMAKE_ARGS
 
 set(DEP_PATCHES patch/0001-cmake-arm64-has-fpu.patch)
 
+# Windows-arm64 NEON: gas-syntax .S assembled via gas-preprocessor + armasm64
+# (FFmpeg's tool, pinned from FFmpeg/gas-preprocessor@ac18363, GPLv2+ — build
+# tool only, nothing of it links into the output).
+set(DEP_PATCHES_WINDOWS patch/0002-msvc-arm64-neon-gas-preprocessor.patch)
+set(DEP_CMAKE_ARGS_WINDOWS -DGAS_PREPROCESSOR=@RECIPE_DIR@/gas-preprocessor.pl)
+
 set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES COPYING)

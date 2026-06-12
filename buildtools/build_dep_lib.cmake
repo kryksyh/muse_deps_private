@@ -105,11 +105,14 @@ endfunction()
 # BUILD/INSTALL/BD_*/DEP_CMAKE_ARGS/BD_DEPENDS_PREFIXES from the calling scope
 # (dynamic scope). Used by the default build and by recipe build.cmake files.
 function(_bd_cmake_build srcdir)
+    # @RECIPE_DIR@ lets spec args reference files shipped with the recipe
+    # (e.g. mpg123 passes its vendored gas-preprocessor.pl).
+    string(REPLACE "@RECIPE_DIR@" "${BD_RECIPE_DIR}" _dep_cmake_args "${DEP_CMAKE_ARGS}")
     set(cfg -S "${srcdir}" -B "${BUILD}" -G Ninja
             -DCMAKE_BUILD_TYPE=RelWithDebInfo   # always; see build_dep() header (CRT match)
             -DCMAKE_INSTALL_PREFIX=${INSTALL}
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5   # allow pre-3.5 projects under CMake 4
-            ${DEP_CMAKE_ARGS})
+            ${_dep_cmake_args})
     # List-valued cache vars (prefix path, osx archs) go through a -C initial-cache
     # file: their embedded semicolons would be split by the list expansions on the
     # way to execute_process.
