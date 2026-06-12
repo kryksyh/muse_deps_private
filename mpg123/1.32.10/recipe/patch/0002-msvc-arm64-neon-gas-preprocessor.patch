@@ -28,7 +28,7 @@ diff --color -ruN ma/ports/cmake/src/libmpg123/CMakeLists.txt mb/ports/cmake/src
 +        add_custom_command(
 +            OUTPUT ${FILENAME}.obj
 +            COMMAND ${PERL_EXE} ${GAS_PREPROCESSOR} -arch aarch64 -as-type armasm --
-+            ${ARMASM64_EXE} -nologo -ignore 4509 -DASMALIGN_BALIGN ${GP_DEFINITIONS}
++            ${ARMASM64_EXE} -nologo -ignore 4509 -DASMALIGN_BALIGN -D__aarch64__=1 ${GP_DEFINITIONS}
 +            -I"${PROJECT_SOURCE_DIR}/../../src" -I"${PROJECT_BINARY_DIR}/src"
 +            -o ${FILENAME}.obj "${FILE}"
 +            DEPENDS ${FILE}
