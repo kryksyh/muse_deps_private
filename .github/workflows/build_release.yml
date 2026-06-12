@@ -91,9 +91,10 @@ jobs:
             built="$built $os_arch"
             os=${os_arch%-*}; arch=${os_arch##*-}
             [ -f prebuilt.lock ] && grep -v " $os $arch " prebuilt.lock > prebuilt.lock.tmp || : > prebuilt.lock.tmp
-            while read -r name ver los larch file sha rest; do
+            # windows runners write CRLF fragments (cmake file(WRITE) translates)
+            tr -d '\r' < "$frag" | while read -r name ver los larch file sha rest; do
               echo "$name $ver $los $larch $file $sha $tag" >> prebuilt.lock.tmp
-            done < "$frag"
+            done
             sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
           done
           {
