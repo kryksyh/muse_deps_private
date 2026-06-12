@@ -410,4 +410,11 @@ function(muse_consume name version mode local_path os arch)
     else()
         message(FATAL_ERROR "[${name}] unknown DEP_KIND: ${DEP_KIND}")
     endif()
+
+    # Optional metadata hook: bridge work the dep needs at its consumer (e.g.
+    # zlib seeds FindZLIB, source-delivery deps add_subdirectory their tree) —
+    # keeps dep-internal knowledge out of app CMake.
+    if(COMMAND ${name}_post_consume)
+        cmake_language(CALL ${name}_post_consume "${mode}" "${local_path}" "${os}" "${arch}" "${version}")
+    endif()
 endfunction()
