@@ -124,14 +124,17 @@ function(require_dep name)
 endfunction()
 
 # Build-time tools (host executables a dep needs while building, e.g. yasm for
-# mpg123's x86/x64 asm decoder). Build (or find) the tool, then prepend its bin/
-# to PATH so later dep builds' find_program() locate it. Must precede the deps
-# that need it in the manifest. Honors MUSE_USE_SYSTEM_<NAME> to use a system tool.
+# mpg123's x86/x64 asm decoder). Fetch the locked prebuilt (or build/find it),
+# then prepend its bin/ to PATH so later dep builds' find_program() locate it.
+# Must precede the deps that need it in the manifest. Honors
+# MUSE_USE_SYSTEM_<NAME> / MUSE_BUILD_<NAME> like require_dep.
 function(require_tool name)
     string(TOUPPER ${name} name_upper)
-    set(mode "rebuild")
+    set(mode "prebuilt")
     if (MUSE_USE_SYSTEM_ALL OR MUSE_USE_SYSTEM_${name_upper})
         set(mode "system")
+    elseif (MUSE_BUILD_ALL OR MUSE_BUILD_${name_upper})
+        set(mode "rebuild")
     endif()
     _muse_run("${name}" "" "${mode}" version)
 

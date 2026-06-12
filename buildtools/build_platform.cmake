@@ -70,7 +70,7 @@ endforeach()
 list(REMOVE_DUPLICATES ALL)
 
 # Build-time tools on PATH before the libs (DEP_PLATFORMS already restricted
-# them to this platform). Never packaged.
+# them to this platform). Staged like libs so they get packaged and locked too.
 if(OS STREQUAL "windows")
     set(_sep ";")
 else()
@@ -81,8 +81,8 @@ foreach(_t ${TOOLS})
     build_dep(NAME ${_t} RECIPE_DIR "${REPO_ROOT}/${_t}/${_VER_${_t}}/recipe"
               OS ${OS} ARCH ${ARCH}
               WORK "${REPO_ROOT}/.build/platform/work/${_t}"
-              INSTALL_DIR "${REPO_ROOT}/.build/platform/tools/${_t}")
-    set(ENV{PATH} "${REPO_ROOT}/.build/platform/tools/${_t}/bin${_sep}$ENV{PATH}")
+              INSTALL_DIR "${STAGE}/${_t}")
+    set(ENV{PATH} "${STAGE}/${_t}/bin${_sep}$ENV{PATH}")
 endforeach()
 
 # Build in dependency order: a dep is built once all its DEP_DEPENDS are staged.
@@ -129,7 +129,7 @@ set(OUT_DIR "${REPO_ROOT}/.build/platform/out")
 file(REMOVE_RECURSE "${OUT_DIR}")
 file(MAKE_DIRECTORY "${OUT_DIR}")
 set(_lock "")
-foreach(_n ${ALL})
+foreach(_n ${ALL} ${TOOLS})
     _bd_recipe_sig("${REPO_ROOT}/${_n}/${_VER_${_n}}/recipe" "${OS}" "${ARCH}" _sig)
     string(SUBSTRING "${_sig}" 0 12 _sig)
     set(_file "${_n}-${_VER_${_n}}-${OS}-${ARCH}-${_sig}.7z")
