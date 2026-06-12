@@ -164,6 +164,7 @@ function(_muse_resolve_installed name prefix os)
     set_property(GLOBAL PROPERTY ${name}_INCLUDE_DIRS ${inc})
     set_property(GLOBAL PROPERTY ${name}_LIBRARIES ${_primary_link})
     set_property(GLOBAL PROPERTY ${name}_INSTALL_LIBRARIES ${_allbundle})
+    message(STATUS "[${name}] bundle: ${_allbundle}")
 endfunction()
 
 # Find system libraries by base name -> absolute paths (fatal if any is missing).
