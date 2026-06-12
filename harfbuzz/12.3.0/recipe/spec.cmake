@@ -1,0 +1,3 @@
+set(DEP_SOURCES
+    "harfbuzz|tarball|https://github.com/harfbuzz/harfbuzz/releases/download/12.3.0/harfbuzz-12.3.0.tar.xz|8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7"
+)
