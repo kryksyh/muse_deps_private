@@ -1,0 +1,79 @@
+Audacity commit cb810e8652
+Subject: Reapply 5955dbc75295997f273981224ffede70506bc185
+Reapplies: 5955dbc75295997f273981224ffede70506bc185 Possible fix for bug #590
+
+diff --git a/cmt/cmtcmd.c b/cmt/cmtcmd.c
+index 9fdf4ce..b97f07b 100644
+--- a/cmt/cmtcmd.c
++++ b/cmt/cmtcmd.c
+@@ -18,7 +18,7 @@
+ #define HASHELEM(p) ((p).symbol_name)
+ #define HASHVAL 50
+ #define HASHENTRIES 50
+-#define HASHENTER lookup
++#define HASHENTER hash_lookup
+ #define HASHNOCOPY
+ 
+ #include "hashrout.h"
+@@ -26,7 +26,7 @@
+ void defvar(char *name, int *addr)
+ 
+ {
+-    intptr_t i = lookup(name);
++    intptr_t i = hash_lookup(name);
+     HASHENTRY(i).symb_type = var_symb_type;
+     HASHENTRY(i).ptr.intptr = addr;
+ }
+@@ -34,7 +34,7 @@ void defvar(char *name, int *addr)
+ 
+ void defun(char *name, seq_cmd_fn addr)
+ {
+-    intptr_t i = lookup(name);
++    intptr_t i = hash_lookup(name);
+     HASHENTRY(i).symb_type = fn_symb_type;
+     HASHENTRY(i).ptr.routine = addr;
+ }
+@@ -42,7 +42,7 @@ void defun(char *name, seq_cmd_fn addr)
+ 
+ void defvec(char *name, int *addr, int size)
+ {
+-    intptr_t i = lookup(name);
++    intptr_t i = hash_lookup(name);
+     HASHENTRY(i).symb_type = vec_symb_type;
+     HASHENTRY(i).size = size;
+     HASHENTRY(i).ptr.intptr = addr;
+diff --git a/cmt/cmtcmd.h b/cmt/cmtcmd.h
+index 2a2fab5..2b536af 100644
+--- a/cmt/cmtcmd.h
++++ b/cmt/cmtcmd.h
+@@ -25,7 +25,7 @@ typedef struct symb_descr {
+     } ptr;
+ } symb_descr_node;
+ 
+-intptr_t lookup(char *s);
++intptr_t hash_lookup(char *s);
+ void defvar(char *name, int *addr);
+ void defvec(char *name, int *addr, int size);
+ /* former defun_type replaced by seq_cmd_fn */
+diff --git a/cmt/seqread.c b/cmt/seqread.c
+index 55f0c77..7d4d1e9 100644
+--- a/cmt/seqread.c
++++ b/cmt/seqread.c
+@@ -464,7 +464,7 @@ private void docall(void)
+         if (fieldx == 1) fferror("Routine name expected");
+         else if (token[fieldx] != '(') fferror("Open paren expected");
+         else {
+-            desc = &HASHENTRY(lookup(symbol));
++            desc = &HASHENTRY(hash_lookup(symbol));
+             if (!desc->symb_type) {
+                 fieldx = 0;
+                 fferror("Function not defined");
+@@ -1030,7 +1030,7 @@ private void doset(boolean vec_flag)
+     linex += scan();
+     if (!token[0]) fferror("Variable name expected");
+     else {
+-        struct symb_descr *desc = &HASHENTRY(lookup(token));
++        struct symb_descr *desc = &HASHENTRY(hash_lookup(token));
+         if (!desc->symb_type) fferror("Called function not defined");
+         else if (vec_flag && (desc->symb_type != vec_symb_type)) {
+                 fferror("This is not an array");
