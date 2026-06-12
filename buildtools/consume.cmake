@@ -3,9 +3,10 @@
 # driven by DEP_* metadata; lib names are derived from the installed prefix.
 #
 # Prebuilt binaries are looked up in prebuilt.lock (repo root): one line per
-# "<name> <version> <os> <arch> <archive> <sha256>", downloaded from
-# $MUSE_DEPS_PREBUILT_URL (or the default release), SHA-verified, extracted into
-# local_path. Any miss or failure falls back to building from source.
+# "<name> <version> <os> <arch> <archive> <sha256> <release>". Each producer run
+# publishes into its own release, so archives are immutable; $MUSE_DEPS_PREBUILT_URL
+# overrides the releases/download base for mirrors. SHA-verified, extracted into
+# local_path; any miss or failure falls back to building from source.
 #
 # Metadata keys (beyond the spec's source URL/SHA, deps, patches, cmake args):
 #   DEP_KIND              library | source                (default: library)
@@ -243,10 +244,16 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
         return()
     endif()
     string(REPLACE " " ";" entry "${entry}")
+    list(LENGTH entry _n)
+    if(NOT _n EQUAL 7)
+        message(STATUS "[${name}] malformed lock entry — building from source")
+        return()
+    endif()
     list(GET entry 2 lock_os)
     list(GET entry 3 lock_arch)
     list(GET entry 4 file)
     list(GET entry 5 sha)
+    list(GET entry 6 release)
 
     # A lock line older than the local recipe must not be consumed: the archive
     # name embeds the recipe signature.
@@ -276,13 +283,14 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
         endif()
     endif()
     if(NOT ok)
+        # Base of the releases/download tree; each lock line names its release.
         set(url "$ENV{MUSE_DEPS_PREBUILT_URL}")
         if(NOT url)
-            set(url "https://github.com/kryksyh/muse_deps_private/releases/download/prebuilt")
+            set(url "https://github.com/kryksyh/muse_deps_private/releases/download")
         endif()
         file(MAKE_DIRECTORY "${cache}/prebuilt")
         foreach(attempt 1 2 3)
-            file(DOWNLOAD "${url}/${file}" "${archive}" STATUS st)
+            file(DOWNLOAD "${url}/${release}/${file}" "${archive}" STATUS st)
             list(GET st 0 c)
             if(c EQUAL 0)
                 file(SHA256 "${archive}" got)

@@ -76,44 +76,28 @@ jobs:
           pattern: out-*
           merge-multiple: true
           path: out
-      - name: Upload archives (write-once)
+      # Every run publishes into its OWN release: no name collisions, no mutation
+      # of anything a pinned lock references. Old releases prune by age, never
+      # in-place.
+      - name: Upload archives to this run's release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release view prebuilt >/dev/null 2>&1 \
-            || gh release create prebuilt --title prebuilt \
-                 --notes "Content-addressed prebuilt dependency archives; index in prebuilt.lock."
-          existing=$(gh release view prebuilt --json assets -q '.assets[].name')
-          : > skipped.txt
-          for f in out/*.7z; do
-            name=$(basename "$f")
-            if grep -qx "$name" <<< "$existing"; then
-              echo "skip $name (already published)"
-              echo "$name" >> skipped.txt
-            else
-              gh release upload prebuilt "$f"
-            fi
-          done
-      # Builds are not bit-reproducible: a rebuilt archive whose name (recipe sig)
-      # is already published differs in bytes from the published asset. The asset
-      # is write-once, so its lock line must record the PUBLISHED bytes' sha.
+          tag="deps-r${{ github.run_id }}"
+          gh release view "$tag" >/dev/null 2>&1 \
+            || gh release create "$tag" --title "$tag" \
+                 --notes "Prebuilt dependency archives for prebuilt.lock @ $(git rev-parse --short HEAD)."
+          gh release upload "$tag" out/*.7z --clobber
       - name: Merge lock fragments and commit
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          mkdir -p .published
+          tag="deps-r${{ github.run_id }}"
           for frag in out/prebuilt-*.lock; do
             os_arch=$(basename "$frag" .lock | sed 's/^prebuilt-//')
             os=${os_arch%-*}; arch=${os_arch##*-}
             [ -f prebuilt.lock ] && grep -v " $os $arch " prebuilt.lock > prebuilt.lock.tmp || : > prebuilt.lock.tmp
-            while read -r name ver los larch file sha; do
-              if grep -qx "$file" skipped.txt; then
-                [ -f ".published/$file" ] || gh release download prebuilt --pattern "$file" --dir .published
-                sha=$(sha256sum ".published/$file" | awk '{print $1}')
-              fi
-              echo "$name $ver $los $larch $file $sha" >> prebuilt.lock.tmp
+            while read -r name ver los larch file sha rest; do
+              echo "$name $ver $los $larch $file $sha $tag" >> prebuilt.lock.tmp
             done < "$frag"
             sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
           done

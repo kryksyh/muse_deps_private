@@ -24,10 +24,11 @@ prebuilt.lock                index of prebuilt archives: name version os arch fi
 
 ## Releases
 
-- `prebuilt` — per-dep archives, named `<name>-<version>-<os>-<arch>-<sig>.7z`
-  (`sig` = recipe hash). Content-addressed and write-once; `prebuilt.lock` maps
-  each dep/platform to its archive + SHA-256, so consumers verify every download
-  and a recipe change can never be served stale.
+- `deps-r<run>` — one release per producer run with that run's per-dep archives,
+  named `<name>-<version>-<os>-<arch>-<sig>.7z` (`sig` = recipe + engine-rev
+  hash). `prebuilt.lock` maps each dep/platform to archive + SHA-256 + release,
+  so downloads are verified and nothing a pinned lock references is ever
+  mutated. Old releases are pruned by age, never edited.
 - `sources` — mirror of all pinned source tarballs (fallback when upstream is
   down) + self-contained `sources-<sha>.7z` offline bundles.
 
