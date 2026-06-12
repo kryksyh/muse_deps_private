@@ -16,25 +16,23 @@ file(MAKE_DIRECTORY "${OUT}")
 include("${CMAKE_CURRENT_LIST_DIR}/build_dep_lib.cmake")   # _bd_src_ext
 
 # Stage <url> as <label>-src.<ext> — our naming, not the upstream basename.
-function(_mirror_fetch label url sha)
+# Upstream is primary; the previous release's mirror asset (same SHA gate, far
+# more available than flaky upstreams like surina.net) is the fallback, so a
+# re-mirror never depends on every upstream being up at once.
+function(_mirror_fetch name label url sha)
     get_filename_component(an "${url}" NAME)
     _bd_src_ext("${an}" ext)
     set(dst "${OUT}/${label}-src.${ext}")
     if(EXISTS "${dst}")
         return()   # already mirrored (another version dir of the same dep)
     endif()
-    message(STATUS "[mirror] ${label}: ${url}")
-    file(DOWNLOAD "${url}" "${dst}" STATUS st)
-    list(GET st 0 c)
-    if(c EQUAL 0)
-        file(SHA256 "${dst}" got)
-        if(got STREQUAL "${sha}")
-            return()
-        endif()
-        message(WARNING "[mirror] ${label}: sha256 ${got} != ${sha}")
+    set(urls "${url}")
+    _bd_mirror("${name}" "${REPO}" prev)
+    if(prev)
+        list(APPEND urls "${prev}/${label}-src.${ext}")
     endif()
-    file(REMOVE "${dst}")
-    message(FATAL_ERROR "[mirror] ${label} download failed: ${st}")
+    message(STATUS "[mirror] ${label}: ${url}")
+    _bd_fetch("${dst}" "${sha}" ${urls})
 endfunction()
 
 # Mirror one recipe's sources (function scope isolates the DEP_* it sets):

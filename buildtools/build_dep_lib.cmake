@@ -69,7 +69,9 @@ endfunction()
 function(_bd_fetch dest sha256)
     foreach(url ${ARGN})
         foreach(attempt 1 2 3)
-            file(DOWNLOAD "${url}" "${dest}" STATUS _st)
+            # INACTIVITY_TIMEOUT: a stalling server (surina.net) must fail the
+            # attempt and move on to the next retry/URL, not hang the job.
+            file(DOWNLOAD "${url}" "${dest}" STATUS _st INACTIVITY_TIMEOUT 30)
             list(GET _st 0 _c)
             if(_c EQUAL 0)
                 file(SHA256 "${dest}" _got)
