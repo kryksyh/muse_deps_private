@@ -87,6 +87,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           tag="deps-$(date -u +%Y%m%d-%H%M%S)"
+          # Mirror BEFORE the lock merge: _bd_mirror's fallback URLs come from
+          # the lock's release column, and the merge below rewrites it to this
+          # run's tag — whose release does not exist yet.
+          cmake -P buildtools/mirror_sources.cmake
           built=""
           for frag in out/prebuilt-*.lock; do
             os_arch=$(basename "$frag" .lock | sed 's/^prebuilt-//')
@@ -117,7 +121,6 @@ jobs:
               echo "| $n | ${ver:--} | $kind |"
             done | sort
           } > notes.md
-          cmake -P buildtools/mirror_sources.cmake
           gh release create "$tag" --title "$tag" --notes-file notes.md
           gh release upload "$tag" out/*.7z .build/mirror/*
           git config user.name github-actions
