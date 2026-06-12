@@ -76,24 +76,19 @@ jobs:
           pattern: out-*
           merge-multiple: true
           path: out
-      # Every run publishes into its OWN release: no name collisions, no mutation
-      # of anything a pinned lock references. Old releases prune by age, never
-      # in-place.
-      - name: Upload archives to this run's release
+      # Every run publishes into its OWN date-tagged release: no name collisions,
+      # no mutation of anything a pinned lock references. Old releases prune by
+      # age, never in-place.
+      - name: Publish release and update lock
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          tag="deps-r${{ github.run_id }}"
-          gh release view "$tag" >/dev/null 2>&1 \
-            || gh release create "$tag" --title "$tag" \
-                 --notes "Prebuilt dependency archives for prebuilt.lock @ $(git rev-parse --short HEAD)."
-          gh release upload "$tag" out/*.7z --clobber
-      - name: Merge lock fragments and commit
-        run: |
-          tag="deps-r${{ github.run_id }}"
+          tag="deps-$(date -u +%Y%m%d-%H%M%S)"
+          built=""
           for frag in out/prebuilt-*.lock; do
             os_arch=$(basename "$frag" .lock | sed 's/^prebuilt-//')
+            built="$built $os_arch"
             os=${os_arch%-*}; arch=${os_arch##*-}
             [ -f prebuilt.lock ] && grep -v " $os $arch " prebuilt.lock > prebuilt.lock.tmp || : > prebuilt.lock.tmp
             while read -r name ver los larch file sha rest; do
@@ -101,6 +96,17 @@ jobs:
             done < "$frag"
             sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
           done
+          {
+            echo "Prebuilt dependencies at muse_deps \`$(git rev-parse --short HEAD)\`."
+            echo
+            echo "Built in this run:$built"
+            echo
+            echo "| dependency | version |"
+            echo "|---|---|"
+            awk '{ print $1, $2 }' prebuilt.lock | sort -u | awk '{ printf "| %s | %s |\n", $1, $2 }'
+          } > notes.md
+          gh release create "$tag" --title "$tag" --notes-file notes.md
+          gh release upload "$tag" out/*.7z
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add prebuilt.lock
