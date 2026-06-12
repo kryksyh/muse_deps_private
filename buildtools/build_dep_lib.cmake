@@ -182,7 +182,10 @@ endfunction()
 # Signature of a recipe for one os/arch: hashes every recipe file, so any recipe
 # change yields a new signature. Used for the build stamp and archive naming.
 function(_bd_recipe_sig recipe_dir os arch out)
-    set(_sig "${os}|${arch}")
+    # Bump on builder-behavior changes: archives must get new names when the
+    # same recipe would produce different bytes (e.g. the git-apply fix).
+    set(_BD_ENGINE_REV 2)
+    set(_sig "${_BD_ENGINE_REV}|${os}|${arch}")
     file(GLOB_RECURSE _files "${recipe_dir}/*")
     list(SORT _files)
     foreach(_f ${_files})
@@ -273,9 +276,16 @@ function(build_dep)
 
     # 2. patch — from the (merged) DEP_PATCHES list so OS-specific patches only
     # apply on their OS (entries are paths relative to the recipe dir).
+    # GIT_DIR=nonexistent forces plain out-of-repo apply: inside an enclosing
+    # repo, git scopes patch paths against the repo root and SILENTLY SKIPS
+    # non-matching entries (exit 0) on some git versions.
     foreach(p ${DEP_PATCHES})
         message(STATUS "[${BD_NAME}] patch ${p}")
-        _bd_run(${GIT} apply --whitespace=nowarn "${BD_RECIPE_DIR}/${p}" WORKING_DIRECTORY "${SRC}")
+        _bd_run(${CMAKE_COMMAND} -E env GIT_DIR=${BD_WORK}/.no-such-repo
+                ${GIT} apply --whitespace=nowarn "${BD_RECIPE_DIR}/${p}" WORKING_DIRECTORY "${SRC}")
+        file(SHA256 "${BD_RECIPE_DIR}/${p}" _ph)
+        string(SUBSTRING "${_ph}" 0 8 _ph)
+        message(STATUS "[${BD_NAME}] patch ${p} applied (${_ph})")
     endforeach()
 
     # 3. build + install

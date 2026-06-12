@@ -1,35 +1,12 @@
 WASAPI loopback capture devices ("<name> (loopback)" inputs opened with
 AUDCLNT_STREAMFLAGS_LOOPBACK) + PaWinMME_*/PaWinDS_GetDeviceGUID exports that
-au3 portmixer probes for. Carried by Audacity since AU3 (lib-src
-audacity-patches.txt; rebased onto 19.7.0 in audacity/conan-recipes).
+au3 portmixer probes for. Carried by Audacity since AU3; regenerated as a
+plain byte-faithful diff (the .def files are CRLF).
 
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 122fe93..a4b3113 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -188,6 +188,8 @@ IF(WIN32)
-     SET(PA_PRIVATE_INCLUDES ${PA_PRIVATE_INCLUDES} ${PA_DS_INCLUDES})
-     SET(PA_SOURCES ${PA_SOURCES} ${PA_DS_SOURCES})
-     SET(PA_LIBRARY_DEPENDENCIES ${PA_LIBRARY_DEPENDENCIES} dsound)
-+  ELSE()
-+    SET(DEF_EXCLUDE_WINDS_SYMBOLS ";")
-   ENDIF(PA_USE_DS)
- 
-   OPTION(PA_USE_WMME "Enable support for MME" ON)
-@@ -197,6 +199,8 @@ IF(WIN32)
-     SET(PA_PUBLIC_INCLUDES ${PA_PUBLIC_INCLUDES} include/pa_win_wmme.h include/pa_win_waveformat.h)
-     SET(PA_SOURCES ${PA_SOURCES} ${PA_WMME_SOURCES})
-     SET(PA_LIBRARY_DEPENDENCIES ${PA_LIBRARY_DEPENDENCIES} ole32 uuid)
-+  ELSE()
-+    SET(DEF_EXCLUDE_WMME_SYMBOLS ";")
-   ENDIF()
- 
-   # MinGW versions below 4.93, especially non MinGW-w64 distributions may
-diff --git a/build/msvc/portaudio.def b/build/msvc/portaudio.def
-index 6ecb142..e542ff8 100644
---- a/build/msvc/portaudio.def
-+++ b/build/msvc/portaudio.def
-@@ -56,3 +56,8 @@ PaWasapi_SetStreamStateHandler      @68
+diff --color -ruN a/build/msvc/portaudio.def b/build/msvc/portaudio.def
+--- a/build/msvc/portaudio.def	2021-04-01 03:17:30.000000000 +0300
++++ b/build/msvc/portaudio.def	2026-06-12 09:58:03.606772673 +0300
+@@ -56,3 +56,8 @@
  PaWasapiWinrt_SetDefaultDeviceId    @67
  PaWasapiWinrt_PopulateDeviceList    @69
  PaWasapi_GetIMMDevice               @70
@@ -38,11 +15,10 @@ index 6ecb142..e542ff8 100644
 +PaWinMME_GetStreamOutputHandleCount @73
 +PaWinMME_GetStreamOutputHandle      @74
 +PaWinDS_GetDeviceGUID               @75
-diff --git a/cmake_support/template_portaudio.def b/cmake_support/template_portaudio.def
-index 9cf0dc3..fe4360c 100644
---- a/cmake_support/template_portaudio.def
-+++ b/cmake_support/template_portaudio.def
-@@ -59,3 +59,8 @@ PaUtil_SetDebugPrintFunction        @55
+diff --color -ruN a/cmake_support/template_portaudio.def b/cmake_support/template_portaudio.def
+--- a/cmake_support/template_portaudio.def	2021-04-01 03:17:30.000000000 +0300
++++ b/cmake_support/template_portaudio.def	2026-06-12 09:58:03.606816673 +0300
+@@ -59,3 +59,8 @@
  @DEF_EXCLUDE_WASAPI_SYMBOLS@PaWasapiWinrt_SetDefaultDeviceId    @67
  @DEF_EXCLUDE_WASAPI_SYMBOLS@PaWasapiWinrt_PopulateDeviceList    @69
  @DEF_EXCLUDE_WASAPI_SYMBOLS@PaWasapi_GetIMMDevice               @70
@@ -51,11 +27,31 @@ index 9cf0dc3..fe4360c 100644
 +@DEF_EXCLUDE_WMME_SYMBOLS@PaWinMME_GetStreamOutputHandleCount @73
 +@DEF_EXCLUDE_WMME_SYMBOLS@PaWinMME_GetStreamOutputHandle      @74
 +@DEF_EXCLUDE_WINDS_SYMBOLS@PaWinDS_GetDeviceGUID              @75
-diff --git a/include/pa_win_ds.h b/include/pa_win_ds.h
-index 8081abd..edd6b58 100644
---- a/include/pa_win_ds.h
-+++ b/include/pa_win_ds.h
-@@ -86,7 +86,7 @@ typedef struct PaWinDirectSoundStreamInfo{
+diff --color -ruN a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2021-04-01 03:17:30.000000000 +0300
++++ b/CMakeLists.txt	2026-06-12 09:58:03.605973124 +0300
+@@ -188,6 +188,8 @@
+     SET(PA_PRIVATE_INCLUDES ${PA_PRIVATE_INCLUDES} ${PA_DS_INCLUDES})
+     SET(PA_SOURCES ${PA_SOURCES} ${PA_DS_SOURCES})
+     SET(PA_LIBRARY_DEPENDENCIES ${PA_LIBRARY_DEPENDENCIES} dsound)
++  ELSE()
++    SET(DEF_EXCLUDE_WINDS_SYMBOLS ";")
+   ENDIF(PA_USE_DS)
+ 
+   OPTION(PA_USE_WMME "Enable support for MME" ON)
+@@ -197,6 +199,8 @@
+     SET(PA_PUBLIC_INCLUDES ${PA_PUBLIC_INCLUDES} include/pa_win_wmme.h include/pa_win_waveformat.h)
+     SET(PA_SOURCES ${PA_SOURCES} ${PA_WMME_SOURCES})
+     SET(PA_LIBRARY_DEPENDENCIES ${PA_LIBRARY_DEPENDENCIES} ole32 uuid)
++  ELSE()
++    SET(DEF_EXCLUDE_WMME_SYMBOLS ";")
+   ENDIF()
+ 
+   # MinGW versions below 4.93, especially non MinGW-w64 distributions may
+diff --color -ruN a/include/pa_win_ds.h b/include/pa_win_ds.h
+--- a/include/pa_win_ds.h	2021-04-01 03:17:30.000000000 +0300
++++ b/include/pa_win_ds.h	2026-06-12 09:58:03.606048375 +0300
+@@ -86,7 +86,7 @@
  
  }PaWinDirectSoundStreamInfo;
  
@@ -64,11 +60,10 @@ index 8081abd..edd6b58 100644
  
  #ifdef __cplusplus
  }
-diff --git a/include/pa_win_wasapi.h b/include/pa_win_wasapi.h
-index c046afd..8adfdc9 100644
---- a/include/pa_win_wasapi.h
-+++ b/include/pa_win_wasapi.h
-@@ -604,6 +604,14 @@ PaError PaWasapiWinrt_SetDefaultDeviceId( const unsigned short *pId, int bOutput
+diff --color -ruN a/include/pa_win_wasapi.h b/include/pa_win_wasapi.h
+--- a/include/pa_win_wasapi.h	2021-04-01 03:17:30.000000000 +0300
++++ b/include/pa_win_wasapi.h	2026-06-12 09:58:03.606105709 +0300
+@@ -604,6 +604,14 @@
  PaError PaWasapiWinrt_PopulateDeviceList( const unsigned short **pId, const unsigned short **pName,
      const PaWasapiDeviceRole *pRole, unsigned int count, int bOutput );
  
@@ -83,11 +78,10 @@ index c046afd..8adfdc9 100644
  
  /*
      IMPORTANT:
-diff --git a/src/hostapi/dsound/pa_win_ds.c b/src/hostapi/dsound/pa_win_ds.c
-index 2ccb4f8..3fcffca 100644
---- a/src/hostapi/dsound/pa_win_ds.c
-+++ b/src/hostapi/dsound/pa_win_ds.c
-@@ -3257,3 +3257,43 @@ static signed long GetStreamWriteAvailable( PaStream* s )
+diff --color -ruN a/src/hostapi/dsound/pa_win_ds.c b/src/hostapi/dsound/pa_win_ds.c
+--- a/src/hostapi/dsound/pa_win_ds.c	2021-04-01 03:17:30.000000000 +0300
++++ b/src/hostapi/dsound/pa_win_ds.c	2026-06-12 09:58:03.606191710 +0300
+@@ -3257,3 +3257,43 @@
  
      return 0;
  }
@@ -131,11 +125,10 @@ index 2ccb4f8..3fcffca 100644
 +
 +    return ret;
 +}
-diff --git a/src/hostapi/wasapi/pa_win_wasapi.c b/src/hostapi/wasapi/pa_win_wasapi.c
-index c76f302..1a3e661 100644
---- a/src/hostapi/wasapi/pa_win_wasapi.c
-+++ b/src/hostapi/wasapi/pa_win_wasapi.c
-@@ -476,6 +476,9 @@ typedef struct PaWasapiDeviceInfo
+diff --color -ruN a/src/hostapi/wasapi/pa_win_wasapi.c b/src/hostapi/wasapi/pa_win_wasapi.c
+--- a/src/hostapi/wasapi/pa_win_wasapi.c	2021-04-01 03:17:30.000000000 +0300
++++ b/src/hostapi/wasapi/pa_win_wasapi.c	2026-06-12 09:58:03.606283252 +0300
+@@ -476,6 +476,9 @@
  
      // Form-factor
      EndpointFormFactor formFactor;
@@ -145,7 +138,7 @@ index c76f302..1a3e661 100644
  }
  PaWasapiDeviceInfo;
  
-@@ -2130,6 +2133,9 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2130,6 +2133,9 @@
      PaWasapiWinrtDeviceInfo defaultCapture = { 0 };
  #endif
  
@@ -155,7 +148,7 @@ index c76f302..1a3e661 100644
      // Make sure device list empty
      if ((paWasapi->deviceCount != 0) || (hostApi->info.deviceCount != 0))
          return paInternalError;
-@@ -2174,6 +2180,19 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2174,6 +2180,19 @@
          }
      }
  
@@ -175,7 +168,7 @@ index c76f302..1a3e661 100644
      // Get all currently active devices
      hr = IMMDeviceEnumerator_EnumAudioEndpoints(pEnumerator, eAll, DEVICE_STATE_ACTIVE, &pEndPoints);
      IF_FAILED_INTERNAL_ERROR_JUMP(hr, result, error);
-@@ -2181,6 +2200,8 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2181,6 +2200,8 @@
      // Get device count
      hr = IMMDeviceCollection_GetCount(pEndPoints, &paWasapi->deviceCount);
      IF_FAILED_INTERNAL_ERROR_JUMP(hr, result, error);
@@ -184,7 +177,7 @@ index c76f302..1a3e661 100644
  #else
      WinRT_GetDefaultDeviceId(defaultRender.id, STATIC_ARRAY_SIZE(defaultRender.id) - 1, eRender);
      defaultRenderId = defaultRender.id;
-@@ -2239,7 +2260,7 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2239,7 +2260,7 @@
      }
  
      // Fill WASAPI device info
@@ -193,7 +186,7 @@ index c76f302..1a3e661 100644
      {
          PaDeviceInfo *deviceInfo = &deviceInfoArray[i];
  
-@@ -2248,7 +2269,7 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2248,7 +2269,7 @@
  
          FillBaseDeviceInfo(deviceInfo, hostApiIndex);
  
@@ -202,7 +195,7 @@ index c76f302..1a3e661 100644
              deviceInfo, &paWasapi->devInfo[i]
          #ifdef PA_WINRT
              , &deviceListContext
-@@ -2262,6 +2283,47 @@ static PaError CreateDeviceList(PaWasapiHostApiRepresentation *paWasapi, PaHostA
+@@ -2262,6 +2283,47 @@
  
          hostApi->deviceInfos[i] = deviceInfo;
          ++hostApi->info.deviceCount;
@@ -250,7 +243,7 @@ index c76f302..1a3e661 100644
      }
  
      // Fill the remaining slots with inactive device info
-@@ -3299,7 +3361,7 @@ static HRESULT CreateAudioClient(PaWasapiStream *pStream, PaWasapiSubStream *pSu
+@@ -3299,7 +3361,7 @@
      if ((params->channelCount == 1) && (pSub->wavex.Format.nChannels == 2))
      {
          // select mixer
@@ -259,7 +252,7 @@ index c76f302..1a3e661 100644
          if (pSub->monoMixer == NULL)
          {
              (*pa_error) = paInvalidChannelCount;
-@@ -3850,6 +3912,9 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+@@ -3850,6 +3912,9 @@
              ((inputStreamInfo != NULL) && (inputStreamInfo->flags & paWinWasapiAutoConvert)))
              stream->in.streamFlags |= (AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY);
  
@@ -269,7 +262,7 @@ index c76f302..1a3e661 100644
          // Fill parameters for Audio Client creation
          stream->in.params.device_info       = info;
          stream->in.params.stream_params     = (*inputParameters);
-@@ -6532,3 +6597,25 @@ void PaWasapi_FreeMemory(void *ptr)
+@@ -6532,3 +6597,25 @@
  {
      free(ptr);
  }
