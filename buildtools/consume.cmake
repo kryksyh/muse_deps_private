@@ -322,9 +322,17 @@ function(_muse_populate_source name local_path version)
     _bd_resolve_cache(cache)
     set(dl "${cache}/downloads/${name}")
     file(MAKE_DIRECTORY "${dl}")
-    # Stamp the pins, not just presence: a version/pin change (or residue from
-    # another mechanism) must wipe and repopulate, never reuse stale sources.
-    string(SHA256 want "${DEP_SOURCES}")
+    set(_recipe_dir "${_MUSE_DEPS_ROOT}/${name}/${version}/recipe")
+    # Stamp the pins, not just presence: a version/pin/patch change (or residue
+    # from another mechanism) must wipe and repopulate, never reuse stale sources.
+    set(_pins "${DEP_SOURCES}")
+    foreach(pe ${DEP_SOURCE_PATCHES})
+        string(REPLACE "|" ";" pf "${pe}")
+        list(GET pf 1 prel)
+        file(SHA256 "${_recipe_dir}/${prel}" psha)
+        list(APPEND _pins "${pe}@${psha}")
+    endforeach()
+    string(SHA256 want "${_pins}")
     set(have "")
     if(EXISTS "${local_path}/.populated")
         file(READ "${local_path}/.populated" have)
@@ -379,6 +387,17 @@ function(_muse_populate_source name local_path version)
                     file(COPY "${gitdir}/" DESTINATION "${local_path}/${sub}" PATTERN ".git" EXCLUDE)
                 endif()
             endif()
+        endforeach()
+        # "subdir|patch/file.patch" entries, applied -p1 inside local_path/<subdir>
+        # (GIT_DIR override: git apply silently skips patches inside enclosing repos).
+        foreach(pe ${DEP_SOURCE_PATCHES})
+            string(REPLACE "|" ";" pf "${pe}")
+            list(GET pf 0 psub)
+            list(GET pf 1 prel)
+            message(STATUS "[${name}] patch ${prel}")
+            _bd_run(${CMAKE_COMMAND} -E env "GIT_DIR=${local_path}/.no-such-repo"
+                    ${GIT} apply --whitespace=nowarn "${_recipe_dir}/${prel}"
+                    WORKING_DIRECTORY "${local_path}/${psub}")
         endforeach()
         file(WRITE "${local_path}/.populated" "${want}\n")
     endif()
