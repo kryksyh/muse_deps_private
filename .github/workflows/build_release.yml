@@ -98,13 +98,22 @@ jobs:
             sort -o prebuilt.lock prebuilt.lock.tmp && rm prebuilt.lock.tmp
           done
           {
-            echo "Prebuilt dependencies at muse_deps \`$(git rev-parse --short HEAD)\`."
+            echo "Dependencies at muse_deps \`$(git rev-parse --short HEAD)\`."
             echo
             echo "Built in this run:$built"
             echo
-            echo "| dependency | version |"
-            echo "|---|---|"
-            awk '{ print $1, $2 }' prebuilt.lock | sort -u | awk '{ printf "| %s | %s |\n", $1, $2 }'
+            echo "| dependency | version | delivery |"
+            echo "|---|---|---|"
+            for m in */*.cmake; do
+              d=$(dirname "$m"); n=$(basename "$m" .cmake)
+              [ "$d" = "$n" ] || continue
+              ver=$(sed -n 's/^set(DEP_VERSION \(.*\))$/\1/p' "$m" | head -1)
+              kind=$(sed -n 's/^set(DEP_KIND \(.*\))$/\1/p' "$m" | head -1)
+              if [ -z "$kind" ]; then
+                if [ -d "$d/$ver/recipe" ]; then kind=prebuilt; else kind=system; fi
+              fi
+              echo "| $n | ${ver:--} | $kind |"
+            done | sort
           } > notes.md
           cmake -P buildtools/mirror_sources.cmake
           gh release create "$tag" --title "$tag" --notes-file notes.md
