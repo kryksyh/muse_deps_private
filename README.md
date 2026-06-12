@@ -11,8 +11,7 @@ buildtools/
   consume.cmake              consume engine: prebuilt (lock-verified) / source / system
   build_dep_lib.cmake        builder: fetch (SHA-256) -> patch -> cmake build -> install
   build_platform.cmake       producer: build all recipes for one os/arch, pack per-dep archives
-  build_source_bundle.cmake  offline bundle: recipes + all pinned sources in one archive
-  mirror_sources.cmake       stage source tarballs for the `sources` release mirror
+  mirror_sources.cmake       stage every pinned source tarball for the release
 prebuilt.lock                index of prebuilt archives: name version os arch file sha256 release
 <name>/
   <name>.cmake               metadata: DEP_VERSION + consume keys (targets, libs, ...)
@@ -29,8 +28,10 @@ prebuilt.lock                index of prebuilt archives: name version os arch fi
   hash). `prebuilt.lock` maps each dep/platform to archive + SHA-256 + release,
   so downloads are verified and nothing a pinned lock references is ever
   mutated. Old releases are pruned by age, never edited.
-- `sources` — mirror of all pinned source tarballs (fallback when upstream is
-  down) + self-contained `sources-<sha>.7z` offline bundles.
+  Each release also carries every pinned pristine source tarball
+  (`<name>-<archive>`): the corresponding sources of the binaries, and the
+  fallback mirror when an upstream host is down. An offline kit is
+  `gh release download <tag>`.
 
 ## Publishing
 
@@ -53,4 +54,4 @@ Archives + lock fragment land in `.build/platform/out/`.
    for a new dep); set `DEP_VERSION`.
 2. Build locally or via the workflow; consumers without a matching lock entry
    fall back to building from source, so a recipe is usable before any release.
-3. Run the **Mirror dependency sources** workflow to mirror the new tarball.
+3. The next producer run attaches the new source tarball to its release.

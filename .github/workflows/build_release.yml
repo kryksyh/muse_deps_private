@@ -105,35 +105,12 @@ jobs:
             echo "|---|---|"
             awk '{ print $1, $2 }' prebuilt.lock | sort -u | awk '{ printf "| %s | %s |\n", $1, $2 }'
           } > notes.md
+          cmake -P buildtools/mirror_sources.cmake
           gh release create "$tag" --title "$tag" --notes-file notes.md
-          gh release upload "$tag" out/*.7z
+          gh release upload "$tag" out/*.7z .build/mirror/*
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add prebuilt.lock
           git diff --cached --quiet || git commit -m "prebuilt.lock: $(ls out/prebuilt-*.lock | xargs -n1 basename | sed 's/^prebuilt-//;s/.lock$//' | paste -sd, -)"
           git push
 
-  source-bundle:
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y p7zip-full
-      - name: Build source bundle
-        run: cmake -P buildtools/build_source_bundle.cmake
-      - name: Upload
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release view sources >/dev/null 2>&1 \
-            || gh release create sources --title sources --notes "Pristine dependency source mirror + offline bundles"
-          f="sources-$(git rev-parse --short HEAD).7z"
-          mv sources.7z "$f"
-          if gh release view sources --json assets -q '.assets[].name' | grep -qx "$f"; then
-            echo "skip $f (already published)"
-          else
-            gh release upload sources "$f"
-          fi
