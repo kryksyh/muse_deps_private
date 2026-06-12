@@ -13,7 +13,7 @@ buildtools/
   build_platform.cmake       producer: build all recipes for one os/arch, pack per-dep archives
   build_source_bundle.cmake  offline bundle: recipes + all pinned sources in one archive
   mirror_sources.cmake       stage source tarballs for the `sources` release mirror
-prebuilt.lock                index of prebuilt archives: name version os arch file sha256
+prebuilt.lock                index of prebuilt archives: name version os arch file sha256 release
 <name>/
   <name>.cmake               metadata: DEP_VERSION + consume keys (targets, libs, ...)
   <version>/recipe/
@@ -35,8 +35,8 @@ prebuilt.lock                index of prebuilt archives: name version os arch fi
 ## Publishing
 
 Dispatch the **Build prebuilt deps** workflow. Matrix jobs build every recipe per
-platform and upload archives; the collect job publishes new assets (existing ones
-are never overwritten) and commits the updated `prebuilt.lock`. Then bump the
+platform and upload archives; the collect job publishes them into this run's own
+release and commits the updated `prebuilt.lock`. Then bump the
 submodule pin in the consumer.
 
 Locally:
