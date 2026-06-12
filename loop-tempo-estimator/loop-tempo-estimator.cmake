@@ -6,18 +6,13 @@ set(DEP_VERSION 0.0.4)
 # <root>/loop-tempo-estimator/source).
 set(DEP_KIND source)
 
-# Materialize the target (project CMake lives under <tree>/source). Deferred to
-# the end of configure: the project reuses the consumer's pffft target when one
-# exists (au3wrap's) — added earlier, its bundled-pffft fallback would win and
-# collide with au3wrap's. Link by name works before the target exists.
-function(_loop-tempo-estimator_add)
+# Called by the consuming module (add_subdirectory needs a directory anchor and
+# is forbidden in deferred execution; it must also run AFTER au3wrap so the
+# project reuses the consumer's pffft instead of fetching its bundled fallback).
+# Project CMake lives under <tree>/source.
+function(loop-tempo-estimator_materialize)
     get_property(_src GLOBAL PROPERTY loop-tempo-estimator_SOURCE_DIR)
     if(NOT TARGET loop-tempo-estimator)
         add_subdirectory("${_src}/loop-tempo-estimator/source" loop-tempo-estimator EXCLUDE_FROM_ALL)
     endif()
-endfunction()
-function(loop-tempo-estimator_post_consume mode local_path os arch version)
-    # NB: DEFER re-evaluates argument variables at execution time — pass nothing,
-    # read the SOURCE_DIR global (set by the engine) inside the call.
-    cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL _loop-tempo-estimator_add)
 endfunction()
