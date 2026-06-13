@@ -1,0 +1,3 @@
+set(DEP_SOURCES
+    "liblouis|tarball|https://github.com/liblouis/liblouis/releases/download/v3.24.0/liblouis-3.24.0.tar.gz|02360230cf5c1fe7dcec59c41a3e74bc283548b0de637963760fa8fad9cd0c39"
+)
