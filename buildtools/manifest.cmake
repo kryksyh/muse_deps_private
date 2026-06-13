@@ -164,3 +164,35 @@ endfunction()
 function(require_source_dep name)
     _muse_run("${name}" "" "rebuild" version)
 endfunction()
+
+# Standard packaging policy: install every consumed dep's runtime libs + license
+# dir into the app layout. macOS bundles into <bundle>/Contents/{Frameworks,
+# Resources/licenses}; Windows/Linux use GNUInstallDirs BIN/LIB + top-level
+# licenses/. The app calls this once after its manifests run; MACOS_BUNDLE names
+# the .app (audacity.app / mscore.app). Reads the MUSE_DEPS_CONSUMED set + the
+# per-dep <name>_INSTALL_LIBRARIES / <name>_PREFIX globals the engine populates.
+function(muse_deps_install_consumed)
+    cmake_parse_arguments(ARG "" "MACOS_BUNDLE" "" ${ARGN})
+    get_property(_deps GLOBAL PROPERTY MUSE_DEPS_CONSUMED)
+    list(REMOVE_DUPLICATES _deps)
+    foreach(_d ${_deps})
+        get_property(_libs GLOBAL PROPERTY ${_d}_INSTALL_LIBRARIES)
+        if (_libs)
+            if (APPLE)
+                install(FILES ${_libs} DESTINATION "${ARG_MACOS_BUNDLE}/Contents/Frameworks")
+            elseif (WIN32)
+                install(FILES ${_libs} TYPE BIN)
+            else()
+                install(FILES ${_libs} TYPE LIB)
+            endif()
+        endif()
+        get_property(_prefix GLOBAL PROPERTY ${_d}_PREFIX)
+        if (_prefix AND EXISTS "${_prefix}/licenses")
+            if (APPLE)
+                install(DIRECTORY "${_prefix}/licenses/" DESTINATION "${ARG_MACOS_BUNDLE}/Contents/Resources/licenses/${_d}")
+            else()
+                install(DIRECTORY "${_prefix}/licenses/" DESTINATION licenses/${_d})
+            endif()
+        endif()
+    endforeach()
+endfunction()
