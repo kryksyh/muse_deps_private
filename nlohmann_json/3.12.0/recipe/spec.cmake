@@ -1,0 +1,12 @@
+# Build recipe for nlohmann_json 3.12.0 — header-only; installs headers + the
+# CMake config package so dependents can find_package(nlohmann_json CONFIG).
+
+set(DEP_SOURCE_URL    "https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz")
+set(DEP_SOURCE_SHA256 "42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa")
+
+set(DEP_CMAKE_ARGS
+    -DJSON_BuildTests=OFF
+)
+
+set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
+set(DEP_LICENSE_FILES LICENSE.MIT)
