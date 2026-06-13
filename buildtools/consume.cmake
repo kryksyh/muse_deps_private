@@ -473,7 +473,10 @@ function(muse_consume name version mode local_path os arch)
         endif()
 
     elseif(DEP_KIND STREQUAL "source")
-        _muse_populate_source("${name}" "${local_path}" "${version}")
+        # SYSTEM mode binds the distro package (in post_consume) — nothing to fetch.
+        if(NOT mode STREQUAL "system")
+            _muse_populate_source("${name}" "${local_path}" "${version}")
+        endif()
 
     elseif(DEP_KIND STREQUAL "tool")
         if(mode STREQUAL "system")

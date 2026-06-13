@@ -115,7 +115,7 @@ function(require_dep name)
     # forcing them to rebuild would fatally fail to find a spec.
     string(TOUPPER ${name} name_upper)
     if (NOT "${ARGV1}" STREQUAL "SYSTEM")
-        if (MUSE_USE_SYSTEM_ALL OR MUSE_USE_SYSTEM_${name_upper})
+        if (MUSE_USE_SYSTEM_ALL)
             set(mode "system")
         elseif (MUSE_BUILD_ALL OR MUSE_BUILD_${name_upper})
             set(mode "rebuild")
@@ -159,10 +159,17 @@ function(require_tool name)
 endfunction()
 
 # Source-delivery deps: muse_deps ships a pinned source tree the consumer
-# compiles in-tree. Populated eagerly — gate conditional deps in the manifest.
-# Exposes the ${name}_SOURCE_DIR global; metadata may provide a materialize fn.
+# compiles in-tree — exposed via the ${name}_SOURCE_DIR global, or a target the
+# dep's post_consume builds. require_source_dep(<n> SYSTEM) binds the system
+# package instead (the dep's post_consume must implement that path). Unlike
+# require_dep, the global MUSE_USE_SYSTEM_ALL does NOT flip source deps — most
+# (picojson, googletest, …) have no system path; system is opt-in per call.
 function(require_source_dep name)
-    _muse_run("${name}" "" "rebuild" version)
+    set(mode "rebuild")
+    if ("${ARGV1}" STREQUAL "SYSTEM")
+        set(mode "system")
+    endif()
+    _muse_run("${name}" "" "${mode}" version)
 endfunction()
 
 # Standard packaging policy: install every consumed dep's runtime libs + license
