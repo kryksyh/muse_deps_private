@@ -161,13 +161,19 @@ endfunction()
 # Source-delivery deps: muse_deps ships a pinned source tree the consumer
 # compiles in-tree — exposed via the ${name}_SOURCE_DIR global, or a target the
 # dep's post_consume builds. require_source_dep(<n> SYSTEM) binds the system
-# package instead (the dep's post_consume must implement that path). Unlike
-# require_dep, the global MUSE_USE_SYSTEM_ALL does NOT flip source deps — most
-# (picojson, googletest, …) have no system path; system is opt-in per call.
+# package instead (the dep's post_consume must implement that path). A dep whose
+# metadata sets DEP_SOURCE_SYSTEM also honors the global MUSE_USE_SYSTEM_ALL, so a
+# full system build (a distro package) gets it from the system too; deps with no
+# system path (picojson, googletest, vst3sdk, …) stay vendored regardless.
 function(require_source_dep name)
     set(mode "rebuild")
     if ("${ARGV1}" STREQUAL "SYSTEM")
         set(mode "system")
+    elseif (MUSE_USE_SYSTEM_ALL)
+        include("${MUSE_DEPS_DIR}/${name}/${name}.cmake")   # reads DEP_SOURCE_SYSTEM
+        if (DEP_SOURCE_SYSTEM)
+            set(mode "system")
+        endif()
     endif()
     _muse_run("${name}" "" "${mode}" version)
 endfunction()
