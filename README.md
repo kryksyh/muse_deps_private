@@ -23,7 +23,7 @@ prebuilt.lock                index of prebuilt archives: name version os arch fi
 
 ## Releases
 
-- `deps-r<run>` — one release per producer run with that run's per-dep archives,
+- `deps-<timestamp>` — one release per producer run with that run's per-dep archives,
   named `<name>-<version>-<os>-<arch>-<sig>.7z` (`sig` = recipe + engine-rev
   hash). `prebuilt.lock` maps each dep/platform to archive + SHA-256 + release,
   so downloads are verified and nothing a pinned lock references is ever

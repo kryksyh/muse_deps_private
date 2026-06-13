@@ -4,8 +4,6 @@
 set(DEP_BINARY_URL_ROOT "https://github.com/kryksyh/muse_deps_private/releases/download/mirror-appimage-tools-2026.06.13")
 set(DEP_BINARY_NAME appimageupdatetool)
 
-set(DEP_PLATFORMS linux-x86_64 linux-aarch64)
-
 set(DEP_BINARY_FILE_linux-x86_64    "appimageupdatetool-x86_64.AppImage")
 set(DEP_BINARY_SHA256_linux-x86_64  "8d17a50e2f7502edacab48216d1b491de3669935858591ea0026cc2db375967c")
 set(DEP_BINARY_FILE_linux-aarch64   "appimageupdatetool-aarch64.AppImage")
