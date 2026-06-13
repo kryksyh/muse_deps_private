@@ -113,11 +113,16 @@ function(require_dep name)
     # A manifest-declared SYSTEM is sticky: the global MUSE_BUILD_ALL/MUSE_USE_SYSTEM
     # knobs must not flip it. Some SYSTEM deps (libcurl, openssl) have no recipe, so
     # forcing them to rebuild would fatally fail to find a spec.
+    # Precedence: per-dep MUSE_BUILD_<NAME> wins (a "keep this one vendored" escape
+    # from MUSE_USE_SYSTEM_ALL — e.g. system base + a vendored dep), then the global
+    # system switch, then MUSE_BUILD_ALL.
     string(TOUPPER ${name} name_upper)
     if (NOT "${ARGV1}" STREQUAL "SYSTEM")
-        if (MUSE_USE_SYSTEM_ALL)
+        if (MUSE_BUILD_${name_upper})
+            set(mode "rebuild")
+        elseif (MUSE_USE_SYSTEM_ALL)
             set(mode "system")
-        elseif (MUSE_BUILD_ALL OR MUSE_BUILD_${name_upper})
+        elseif (MUSE_BUILD_ALL)
             set(mode "rebuild")
         endif()
     endif()
@@ -164,12 +169,15 @@ endfunction()
 # package instead (the dep's post_consume must implement that path). A dep whose
 # metadata sets DEP_SOURCE_SYSTEM also honors the global MUSE_USE_SYSTEM_ALL, so a
 # full system build (a distro package) gets it from the system too; deps with no
-# system path (picojson, googletest, vst3sdk, …) stay vendored regardless.
+# system path (picojson, googletest, vst3sdk, …) stay vendored regardless. Per-dep
+# MUSE_BUILD_<NAME> overrides the flip and keeps it vendored (system base + a
+# vendored chain — e.g. .mnx on a distro without nlohmann_json 3.12).
 function(require_source_dep name)
     set(mode "rebuild")
+    string(TOUPPER ${name} name_upper)
     if ("${ARGV1}" STREQUAL "SYSTEM")
         set(mode "system")
-    elseif (MUSE_USE_SYSTEM_ALL)
+    elseif (MUSE_USE_SYSTEM_ALL AND NOT MUSE_BUILD_${name_upper})
         include("${MUSE_DEPS_DIR}/${name}/${name}.cmake")   # reads DEP_SOURCE_SYSTEM
         if (DEP_SOURCE_SYSTEM)
             set(mode "system")
