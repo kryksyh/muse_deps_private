@@ -3,10 +3,10 @@
 # engine putting nlohmann_json's prefix on CMAKE_PREFIX_PATH (DEP_DEPENDS) it
 # finds it instead of fetching.
 
-set(DEP_SOURCE_URL    "https://github.com/pboettch/json-schema-validator/archive/40af3ec39670e768fc3f01f935140af311d71024.tar.gz")
+set(DEP_SOURCE_URL    https:)
 set(DEP_SOURCE_SHA256 "36d7e99a73aa6076834736f0fb108fa8e232c4739aa4b3e2089fe96efb21fa8d")
 
-set(DEP_DEPENDS "nlohmann_json/3.12.0")
+set(DEP_DEPENDS nlohmann_json)
 
 set(DEP_CMAKE_ARGS
     -DBUILD_SHARED_LIBS=OFF
