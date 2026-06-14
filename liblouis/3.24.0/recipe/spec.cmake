@@ -4,6 +4,6 @@ set(DEP_SOURCES
 
 # MuseScore's MSVC build fix: a fixed buffer instead of a C99 VLA, and disable
 # the dllexport API decoration (liblouis is linked statically here).
-set(DEP_SOURCE_PATCHES
+set(DEP_PATCHES
     "liblouis/liblouis|patch/0001-fix-windows-build.patch"
 )

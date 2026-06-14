@@ -6,4 +6,4 @@ set(DEP_SOURCES
 # USE_SYSTEM path's find_package only provides the namespaced ::validator target
 # (no include/lib via the bare name). Link the ::validator alias, which exists in
 # both fetch and system modes.
-set(DEP_SOURCE_PATCHES "mnxdom|patch/0001-link-namespaced-json-schema-validator.patch")
+set(DEP_PATCHES patch/0001-link-namespaced-json-schema-validator.patch)

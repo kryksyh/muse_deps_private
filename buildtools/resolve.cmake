@@ -313,6 +313,24 @@ function(_extdeps_fetch_prebuilt name local_path os arch version out)
     set(${out} TRUE PARENT_SCOPE)
 endfunction()
 
+# Split a DEP_PATCHES entry into (apply dir, rel path). Bare "<path>" applies in
+# the dep's sole source tree; "<dir>|<path>" names the apply dir (relative to
+# local_path) for a dep with several trees, or a nested target. Same key as the
+# build rail; the qualifier is the only source-delivery-specific bit, optional.
+macro(_extdeps_patch_entry entry sole out_dir out_rel)
+    string(FIND "${entry}" "|" _bar)
+    if(_bar GREATER -1)
+        string(REPLACE "|" ";" _pe "${entry}")
+        list(GET _pe 0 ${out_dir})
+        list(GET _pe 1 ${out_rel})
+    elseif("${sole}" STREQUAL "")
+        message(FATAL_ERROR "[${name}] DEP_PATCHES '${entry}' needs a '<dir>|' prefix (dep has multiple source trees)")
+    else()
+        set(${out_dir} "${sole}")
+        set(${out_rel} "${entry}")
+    endif()
+endmacro()
+
 # Source-delivery (amalgamated, e.g. lv2 stack): fetch each DEP_SOURCES entry
 # ("subdir|tarball|url|sha256" or "subdir|git|repo|commit") cache-first, extract
 # into local_path/<subdir>, expose <name>_SOURCE_DIR. The consumer compiles these
@@ -342,6 +360,21 @@ function(_extdeps_populate_source name local_path version)
         endif()
     endforeach()
 
+    # The dep's sole source subtree, so a bare DEP_PATCHES entry can default its
+    # apply dir to it; a dep with several trees must qualify each patch.
+    set(_subs "")
+    foreach(e ${DEP_SOURCES})
+        string(REPLACE "|" ";" f "${e}")
+        list(GET f 0 _s)
+        list(APPEND _subs "${_s}")
+    endforeach()
+    list(REMOVE_DUPLICATES _subs)
+    list(LENGTH _subs _nsub)
+    set(_sole "")
+    if(_nsub EQUAL 1)
+        set(_sole "${_subs}")
+    endif()
+
     _bd_resolve_cache(cache)
     set(dl "${cache}/downloads/${name}")
     file(MAKE_DIRECTORY "${dl}")
@@ -349,9 +382,8 @@ function(_extdeps_populate_source name local_path version)
     # Stamp the pins, not just presence: a version/pin/patch change (or stray
     # residue) must wipe and repopulate, never reuse stale sources.
     set(_pins "${DEP_SOURCES}")
-    foreach(pe ${DEP_SOURCE_PATCHES})
-        string(REPLACE "|" ";" pf "${pe}")
-        list(GET pf 1 prel)
+    foreach(pe ${DEP_PATCHES})
+        _extdeps_patch_entry("${pe}" "${_sole}" _pdir prel)
         file(SHA256 "${_recipe_dir}/${prel}" psha)
         list(APPEND _pins "${pe}@${psha}")
     endforeach()
@@ -411,12 +443,11 @@ function(_extdeps_populate_source name local_path version)
                 endif()
             endif()
         endforeach()
-        # "subdir|patch/file.patch" entries, applied -p1 inside local_path/<subdir>.
-        # GIT_DIR override: inside an enclosing repo git apply silently skips the patch.
-        foreach(pe ${DEP_SOURCE_PATCHES})
-            string(REPLACE "|" ";" pf "${pe}")
-            list(GET pf 0 psub)
-            list(GET pf 1 prel)
+        # DEP_PATCHES applied -p1 in the dep's source tree (the sole subtree, or
+        # the "<dir>|" qualifier). GIT_DIR override: inside an enclosing repo git
+        # apply silently skips the patch.
+        foreach(pe ${DEP_PATCHES})
+            _extdeps_patch_entry("${pe}" "${_sole}" psub prel)
             message(STATUS "[${name}] patch ${prel}")
             _bd_run(${CMAKE_COMMAND} -E env "GIT_DIR=${local_path}/.no-such-repo"
                     ${GIT} apply --whitespace=nowarn "${_recipe_dir}/${prel}"
