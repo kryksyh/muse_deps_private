@@ -2,7 +2,7 @@
 # libcurl the system openssl comes with it. Two targets (SSL, Crypto). Not used
 # on Windows (libcurl there uses Schannel; the manifest skips it). Use
 # require_dep(openssl SYSTEM) in the manifest.
-function(openssl_consume_override mode local_path os arch version)
+function(openssl_resolve_override mode local_path os arch version)
     if(NOT mode STREQUAL "system")
         message(FATAL_ERROR "[openssl] only system mode is supported, use require_dep(openssl SYSTEM)")
     endif()

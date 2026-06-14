@@ -2,15 +2,15 @@
 # delivery: built in-tree.
 set(DEP_VERSION 2.1)
 set(DEP_KIND source)
-set(DEP_SOURCE_SYSTEM ON)   # has a system path; MUSE_USE_SYSTEM_ALL binds the distro mnxdom
+set(DEP_SOURCE_SYSTEM ON)   # has a system path; EXTDEPS_USE_SYSTEM_ALL binds the distro mnxdom
 
 # The engine builds an `mnxdom` target in-tree from the vendored source, wiring
-# mnxdom's otherwise-FetchContent'd deps to the muse_deps chain: nlohmann_json +
+# mnxdom's otherwise-FetchContent'd deps to the extdeps chain: nlohmann_json +
 # json_schema_validator via find_package (USE_SYSTEM_* + their prefixes on
 # CMAKE_PREFIX_PATH), and the MNX schema via MNX_W3C_SOURCE. The consumer links
 # `mnxdom` unconditionally. require_source_dep(mnxdom SYSTEM) binds a distro
 # package instead.
-function(mnxdom_post_consume mode local_path os arch version)
+function(mnxdom_post_resolve mode local_path os arch version)
     if(TARGET mnxdom)
         return()
     endif()

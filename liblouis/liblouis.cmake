@@ -1,7 +1,7 @@
 # Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 3.24.0)
 
-# Source-delivery: the engine auto-calls liblouis_post_consume() after the
+# Source-delivery: the engine auto-calls liblouis_post_resolve() after the
 # source is populated, creating the `liblouis` static-lib target and the
 # liblouis_TABLES property. The consumer just links `liblouis` and installs
 # ${liblouis_TABLES}. All build glue (MuseScore's config, liblouis.h generation,
@@ -14,7 +14,7 @@ set_property(GLOBAL PROPERTY _liblouis_recipe "${CMAKE_CURRENT_LIST_DIR}/${DEP_V
 
 # Engine hook, invoked once after the source is populated (local_path = the
 # source tree). No manual consumer call, no idempotency guard.
-function(liblouis_post_consume mode local_path os arch version)
+function(liblouis_post_resolve mode local_path os arch version)
     get_property(_recipe GLOBAL PROPERTY _liblouis_recipe)
     set(_src "${local_path}/liblouis/liblouis")
     set(_gen "${CMAKE_BINARY_DIR}/_deps/liblouis-gen/liblouis")

@@ -5,7 +5,7 @@ set(DEP_VERSION 1.17.0)
 # are enabled; never shipped.
 set(DEP_KIND source)
 
-function(googletest_materialize)
+function(googletest_add_to_build)
     if(TARGET gtest)
         return()
     endif()

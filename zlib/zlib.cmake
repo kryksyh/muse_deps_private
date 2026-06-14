@@ -11,12 +11,12 @@ set(DEP_SYSTEM_LIBS z)
 # vendor (bundled freetype, au3) calling find_package(ZLIB). Seed FindZLIB's
 # cache vars so both names resolve to this one install, else that path silently
 # links a second, system libz.
-function(zlib_post_consume mode local_path os arch version)
+function(zlib_post_resolve mode local_path os arch version)
     get_property(_inc  GLOBAL PROPERTY zlib_INCLUDE_DIRS)
     get_property(_libs GLOBAL PROPERTY zlib_LIBRARIES)
     if(_libs)
         list(GET _libs 0 _lib)
-        set(ZLIB_INCLUDE_DIR "${_inc}" CACHE PATH     "from muse_deps zlib" FORCE)
-        set(ZLIB_LIBRARY     "${_lib}" CACHE FILEPATH "from muse_deps zlib" FORCE)
+        set(ZLIB_INCLUDE_DIR "${_inc}" CACHE PATH     "from extdeps zlib" FORCE)
+        set(ZLIB_LIBRARY     "${_lib}" CACHE FILEPATH "from extdeps zlib" FORCE)
     endif()
 endfunction()

@@ -3,11 +3,11 @@ set(DEP_VERSION 1.15)
 
 # Source-delivery: the engine builds a `pugixml` static lib from the vendored
 # amalgamation, or binds the system package under require_source_dep(pugixml SYSTEM)
-# / MUSE_USE_SYSTEM_ALL. The consumer links `pugixml` unconditionally.
+# / EXTDEPS_USE_SYSTEM_ALL. The consumer links `pugixml` unconditionally.
 set(DEP_KIND source)
-set(DEP_SOURCE_SYSTEM ON)   # has a system path; MUSE_USE_SYSTEM_ALL binds the distro pugixml
+set(DEP_SOURCE_SYSTEM ON)   # has a system path; EXTDEPS_USE_SYSTEM_ALL binds the distro pugixml
 
-function(pugixml_post_consume mode local_path os arch version)
+function(pugixml_post_resolve mode local_path os arch version)
     if(TARGET pugixml)
         return()
     endif()

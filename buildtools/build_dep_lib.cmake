@@ -1,5 +1,5 @@
 # Core build steps, shared by the platform producer (build_platform.cmake) and the
-# consume engine's source path (_muse_build in consume.cmake). Include this file,
+# resolve engine's source path (_extdeps_build in resolve.cmake). Include this file,
 # then call build_dep(...).
 #
 # build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> WORK <w> INSTALL_DIR <i> [CACHE <c>])
@@ -8,18 +8,18 @@
 #   on Windows (/MDd vs /MD).
 #   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies <d>/patch/*.patch.
 #   Pristine source archives are fetched into a persistent, SHA-verified cache
-#   (CACHE, or $MUSE_DEPS_CACHE, or ~/.cache/muse_deps) so rebuilds and offline
+#   (CACHE, or $EXTDEPS_CACHE, or ~/.cache/extdeps) so rebuilds and offline
 #   builds reuse them; only the extracted + patched tree and build dir are
 #   per-config (under WORK, wiped each run).
 
-# Cache root for pristine downloads: $MUSE_DEPS_CACHE, else XDG, else ~/.cache.
+# Cache root for pristine downloads: $EXTDEPS_CACHE, else XDG, else ~/.cache.
 function(_bd_resolve_cache out)
-    if(DEFINED ENV{MUSE_DEPS_CACHE})
-        set(${out} "$ENV{MUSE_DEPS_CACHE}" PARENT_SCOPE)
+    if(DEFINED ENV{EXTDEPS_CACHE})
+        set(${out} "$ENV{EXTDEPS_CACHE}" PARENT_SCOPE)
     elseif(DEFINED ENV{XDG_CACHE_HOME})
-        set(${out} "$ENV{XDG_CACHE_HOME}/muse_deps" PARENT_SCOPE)
+        set(${out} "$ENV{XDG_CACHE_HOME}/extdeps" PARENT_SCOPE)
     else()
-        set(${out} "$ENV{HOME}/.cache/muse_deps" PARENT_SCOPE)
+        set(${out} "$ENV{HOME}/.cache/extdeps" PARENT_SCOPE)
     endif()
 endfunction()
 
@@ -34,13 +34,13 @@ function(_bd_src_ext basename out)
     endif()
 endfunction()
 
-# Source mirror tried when upstream fails: $MUSE_DEPS_MIRROR, else the dated
+# Source mirror tried when upstream fails: $EXTDEPS_MIRROR, else the dated
 # release recorded for <name> in prebuilt.lock (sources are attached alongside
 # the prebuilt archives; assets are named <name>-<archive>). Empty when neither
 # exists (e.g. a brand-new dep), so upstream is then the only source.
 function(_bd_mirror name repo_root out)
-    if(DEFINED ENV{MUSE_DEPS_MIRROR})
-        set(${out} "$ENV{MUSE_DEPS_MIRROR}" PARENT_SCOPE)
+    if(DEFINED ENV{EXTDEPS_MIRROR})
+        set(${out} "$ENV{EXTDEPS_MIRROR}" PARENT_SCOPE)
         return()
     endif()
     set(${out} "" PARENT_SCOPE)

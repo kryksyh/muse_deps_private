@@ -3,7 +3,7 @@
 # opusfile lib, decode-only (no http -> no openssl, no config.h needed since
 # HAVE_CONFIG_H is left undefined). The four libopusfile_la_SOURCES; http.c/
 # wincerts.c are the separate libopusurl. A static lib only needs ogg/opus HEADERS
-# to compile (the app links the actual ogg/opus libs via the consume targets), so
+# to compile (the app links the actual ogg/opus libs via the resolved targets), so
 # we just add the dep include dirs — no find_package/link. Runs in build_dep
 # scope: SRC/INSTALL/BD_DEPENDS_PREFIXES.
 

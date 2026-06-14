@@ -6,7 +6,7 @@ set(DEP_KIND source)
 
 # Called by the consumer (muse dockwindow_v2) after the manifest populated the
 # sources.
-function(kddockwidgets_materialize)
+function(kddockwidgets_add_to_build)
     if(TARGET kddockwidgets)
         return()
     endif()

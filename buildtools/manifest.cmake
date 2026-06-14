@@ -1,13 +1,13 @@
-# Consumer API: include this (after setting MUSE_DEPS_DIR if not the including
+# Consumer API: include this (after setting EXTDEPS_DIR if not the including
 # app's submodule layout), then run manifest files of require_dep /
 # require_source_dep calls. Resolution + imported targets only; installing the
 # bundled runtime libs/licenses is the app's packaging policy. Each consumed dep
-# accumulates in the MUSE_DEPS_CONSUMED global property (list of names; per-dep
+# accumulates in the EXTDEPS_CONSUMED global property (list of names; per-dep
 # globals <name>_INSTALL_LIBRARIES and <name>_PREFIX carry the rest).
 
 cmake_minimum_required(VERSION 3.19)
 
-get_filename_component(MUSE_DEPS_DIR "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+get_filename_component(EXTDEPS_DIR "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
 
 if (NOT DEFINED LOCAL_ROOT_PATH OR LOCAL_ROOT_PATH STREQUAL "")
     set(LOCAL_ROOT_PATH "${CMAKE_BINARY_DIR}/_deps")
@@ -17,16 +17,16 @@ endif()
 # Script mode (cmake -P, e.g. the codestyle/crashdumps tools) has no toolchain
 # vars: CMAKE_SYSTEM_NAME/PROCESSOR are empty, which misdetects every host as
 # linux-x86_64, so ask the host directly there.
-set(_muse_sys "${CMAKE_SYSTEM_NAME}")
-set(_muse_proc "${CMAKE_SYSTEM_PROCESSOR}")
-if (_muse_sys STREQUAL "")
-    cmake_host_system_information(RESULT _muse_sys QUERY OS_NAME)
-    cmake_host_system_information(RESULT _muse_proc QUERY OS_PLATFORM)
+set(_extdeps_sys "${CMAKE_SYSTEM_NAME}")
+set(_extdeps_proc "${CMAKE_SYSTEM_PROCESSOR}")
+if (_extdeps_sys STREQUAL "")
+    cmake_host_system_information(RESULT _extdeps_sys QUERY OS_NAME)
+    cmake_host_system_information(RESULT _extdeps_proc QUERY OS_PLATFORM)
 endif()
 if (NOT DEFINED LIB_OS OR LIB_OS STREQUAL "")
-    if (_muse_sys STREQUAL "Windows")
+    if (_extdeps_sys STREQUAL "Windows")
         set(LIB_OS "windows")
-    elseif (_muse_sys MATCHES "Darwin|macOS")
+    elseif (_extdeps_sys MATCHES "Darwin|macOS")
         set(LIB_OS "macos")
     else()
         set(LIB_OS "linux")
@@ -41,12 +41,12 @@ if (NOT DEFINED LIB_ARCH OR LIB_ARCH STREQUAL "")
             set(LIB_ARCH "aarch64")
         elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
             set(LIB_ARCH "x86_64")
-        elseif (_muse_proc MATCHES "arm64|aarch64")
+        elseif (_extdeps_proc MATCHES "arm64|aarch64")
             set(LIB_ARCH "aarch64")
         else()
             set(LIB_ARCH "x86_64")
         endif()
-    elseif (_muse_proc MATCHES "[Aa][Rr][Mm]64|aarch64")
+    elseif (_extdeps_proc MATCHES "[Aa][Rr][Mm]64|aarch64")
         set(LIB_ARCH "aarch64")
     else()
         set(LIB_ARCH "x86_64")
@@ -55,24 +55,24 @@ endif()
 
 # Allow forcing modes from the environment (CI/offline can't always thread cache
 # vars through the build driver). An explicit -D always wins.
-if (NOT DEFINED MUSE_BUILD_ALL AND DEFINED ENV{MUSE_BUILD_ALL})
-    set(MUSE_BUILD_ALL "$ENV{MUSE_BUILD_ALL}")
+if (NOT DEFINED EXTDEPS_BUILD_ALL AND DEFINED ENV{EXTDEPS_BUILD_ALL})
+    set(EXTDEPS_BUILD_ALL "$ENV{EXTDEPS_BUILD_ALL}")
 endif()
-if (NOT DEFINED MUSE_USE_SYSTEM_ALL AND DEFINED ENV{MUSE_USE_SYSTEM_ALL})
-    set(MUSE_USE_SYSTEM_ALL "$ENV{MUSE_USE_SYSTEM_ALL}")
-endif()
-
-# Pristine source cache for source/REBUILD builds: -DMUSE_DEPS_CACHE wins, else a
-# pre-set $MUSE_DEPS_CACHE, else build_dep_lib's ~/.cache default.
-if (MUSE_DEPS_CACHE)
-    set(ENV{MUSE_DEPS_CACHE} "${MUSE_DEPS_CACHE}")
+if (NOT DEFINED EXTDEPS_USE_SYSTEM_ALL AND DEFINED ENV{EXTDEPS_USE_SYSTEM_ALL})
+    set(EXTDEPS_USE_SYSTEM_ALL "$ENV{EXTDEPS_USE_SYSTEM_ALL}")
 endif()
 
-# Include the dep's metadata (DEP_VERSION + consume keys), its recipe spec for
-# non-system modes, and the engine, then run muse_consume.
-function(_muse_run name explicit_version mode out_version)
+# Pristine source cache for source/REBUILD builds: -DEXTDEPS_CACHE wins, else a
+# pre-set $EXTDEPS_CACHE, else build_dep_lib's ~/.cache default.
+if (EXTDEPS_CACHE)
+    set(ENV{EXTDEPS_CACHE} "${EXTDEPS_CACHE}")
+endif()
+
+# Include the dep's metadata (DEP_VERSION + resolve keys), its recipe spec for
+# non-system modes, and the engine, then run extdeps_resolve.
+function(_extdeps_run name explicit_version mode out_version)
     set(local_path ${LOCAL_ROOT_PATH}/${name})
-    include("${MUSE_DEPS_DIR}/${name}/${name}.cmake")
+    include("${EXTDEPS_DIR}/${name}/${name}.cmake")
     if (NOT "${explicit_version}" STREQUAL "")
         set(version "${explicit_version}")
     else()
@@ -82,11 +82,11 @@ function(_muse_run name explicit_version mode out_version)
         if ("${version}" STREQUAL "")
             message(FATAL_ERROR "[deps] '${name}': no version, metadata DEP_VERSION missing and none given in the manifest")
         endif()
-        include("${MUSE_DEPS_DIR}/${name}/${version}/recipe/spec.cmake")
+        include("${EXTDEPS_DIR}/${name}/${version}/recipe/spec.cmake")
     endif()
     # A "local" source builds a working tree in place: point local_path at its
-    # parent so both SOURCE_DIR consumers and post_consume hooks (which take
-    # local_path) resolve <local_path>/<subdir> to it. _muse_populate_source skips
+    # parent so both SOURCE_DIR consumers and post_resolve hooks (which take
+    # local_path) resolve <local_path>/<subdir> to it. _extdeps_populate_source skips
     # the fetch.
     foreach(_s ${DEP_SOURCES})
         string(REPLACE "|" ";" _sf "${_s}")
@@ -96,10 +96,10 @@ function(_muse_run name explicit_version mode out_version)
             get_filename_component(local_path "${_sloc}" DIRECTORY)
         endif()
     endforeach()
-    include("${MUSE_DEPS_DIR}/buildtools/consume.cmake")
-    muse_consume("${name}" "${version}" "${mode}" "${local_path}" "${LIB_OS}" "${LIB_ARCH}")
+    include("${EXTDEPS_DIR}/buildtools/resolve.cmake")
+    extdeps_resolve("${name}" "${version}" "${mode}" "${local_path}" "${LIB_OS}" "${LIB_ARCH}")
     set_property(GLOBAL PROPERTY ${name}_PREFIX "${local_path}")
-    set_property(GLOBAL APPEND PROPERTY MUSE_DEPS_CONSUMED "${name}")
+    set_property(GLOBAL APPEND PROPERTY EXTDEPS_CONSUMED "${name}")
     set(${out_version} "${version}" PARENT_SCOPE)
 endfunction()
 
@@ -122,24 +122,24 @@ function(require_dep name)
         endif()
     endif()
 
-    # A manifest-declared SYSTEM is sticky: the global MUSE_BUILD_ALL/MUSE_USE_SYSTEM
+    # A manifest-declared SYSTEM is sticky: the global EXTDEPS_BUILD_ALL/EXTDEPS_USE_SYSTEM
     # knobs must not flip it. Some SYSTEM deps (libcurl, openssl) have no recipe, so
     # forcing them to rebuild would fatally fail to find a spec.
-    # Precedence: per-dep MUSE_BUILD_<NAME> wins (a "keep this one vendored" escape
-    # from MUSE_USE_SYSTEM_ALL, i.e. system base + a vendored dep), then the global
-    # system switch, then MUSE_BUILD_ALL.
+    # Precedence: per-dep EXTDEPS_BUILD_<NAME> wins (a "keep this one vendored" escape
+    # from EXTDEPS_USE_SYSTEM_ALL, i.e. system base + a vendored dep), then the global
+    # system switch, then EXTDEPS_BUILD_ALL.
     string(TOUPPER ${name} name_upper)
     if (NOT "${ARGV1}" STREQUAL "SYSTEM")
-        if (MUSE_BUILD_${name_upper})
+        if (EXTDEPS_BUILD_${name_upper})
             set(mode "rebuild")
-        elseif (MUSE_USE_SYSTEM_ALL)
+        elseif (EXTDEPS_USE_SYSTEM_ALL)
             set(mode "system")
-        elseif (MUSE_BUILD_ALL)
+        elseif (EXTDEPS_BUILD_ALL)
             set(mode "rebuild")
         endif()
     endif()
 
-    _muse_run("${name}" "${explicit_version}" "${mode}" version)
+    _extdeps_run("${name}" "${explicit_version}" "${mode}" version)
 
     get_property(include_dirs GLOBAL PROPERTY ${name}_INCLUDE_DIRS)
     get_property(libraries GLOBAL PROPERTY ${name}_LIBRARIES)
@@ -153,16 +153,16 @@ endfunction()
 # mpg123's x86/x64 asm decoder). Fetch the locked prebuilt (or build/find it),
 # then prepend its bin/ to PATH so later dep builds' find_program() locate it.
 # Must precede the deps that need it in the manifest. Honors
-# MUSE_USE_SYSTEM_<NAME> / MUSE_BUILD_<NAME>, like require_dep.
+# EXTDEPS_USE_SYSTEM_<NAME> / EXTDEPS_BUILD_<NAME>, like require_dep.
 function(require_tool name)
     string(TOUPPER ${name} name_upper)
     set(mode "prebuilt")
-    if (MUSE_USE_SYSTEM_ALL OR MUSE_USE_SYSTEM_${name_upper})
+    if (EXTDEPS_USE_SYSTEM_ALL OR EXTDEPS_USE_SYSTEM_${name_upper})
         set(mode "system")
-    elseif (MUSE_BUILD_ALL OR MUSE_BUILD_${name_upper})
+    elseif (EXTDEPS_BUILD_ALL OR EXTDEPS_BUILD_${name_upper})
         set(mode "rebuild")
     endif()
-    _muse_run("${name}" "" "${mode}" version)
+    _extdeps_run("${name}" "" "${mode}" version)
 
     get_property(bindir GLOBAL PROPERTY ${name}_BIN_DIR)
     if (bindir)
@@ -175,13 +175,13 @@ function(require_tool name)
     endif()
 endfunction()
 
-# Source-delivery deps: muse_deps ships a pinned source tree the consumer compiles
+# Source-delivery deps: extdeps ships a pinned source tree the consumer compiles
 # in-tree, exposed via the ${name}_SOURCE_DIR global, or a target the dep's
-# post_consume builds. require_source_dep(<n> SYSTEM) binds the system package
-# instead (the dep's post_consume must implement that path). A dep whose metadata
-# sets DEP_SOURCE_SYSTEM also honors the global MUSE_USE_SYSTEM_ALL, so a full
+# post_resolve builds. require_source_dep(<n> SYSTEM) binds the system package
+# instead (the dep's post_resolve must implement that path). A dep whose metadata
+# sets DEP_SOURCE_SYSTEM also honors the global EXTDEPS_USE_SYSTEM_ALL, so a full
 # system build gets it from the system too; deps with no system path (picojson,
-# googletest, vst3sdk, ...) stay vendored regardless. Per-dep MUSE_BUILD_<NAME>
+# googletest, vst3sdk, ...) stay vendored regardless. Per-dep EXTDEPS_BUILD_<NAME>
 # overrides the flip and keeps it vendored (system base + a vendored chain, e.g.
 # .mnx on a distro without nlohmann_json 3.12).
 function(require_source_dep name)
@@ -189,24 +189,24 @@ function(require_source_dep name)
     string(TOUPPER ${name} name_upper)
     if ("${ARGV1}" STREQUAL "SYSTEM")
         set(mode "system")
-    elseif (MUSE_USE_SYSTEM_ALL AND NOT MUSE_BUILD_${name_upper})
-        include("${MUSE_DEPS_DIR}/${name}/${name}.cmake")   # reads DEP_SOURCE_SYSTEM
+    elseif (EXTDEPS_USE_SYSTEM_ALL AND NOT EXTDEPS_BUILD_${name_upper})
+        include("${EXTDEPS_DIR}/${name}/${name}.cmake")   # reads DEP_SOURCE_SYSTEM
         if (DEP_SOURCE_SYSTEM)
             set(mode "system")
         endif()
     endif()
-    _muse_run("${name}" "" "${mode}" version)
+    _extdeps_run("${name}" "" "${mode}" version)
 endfunction()
 
 # Standard packaging policy: install every consumed dep's runtime libs + license
 # dir into the app layout. macOS bundles into <bundle>/Contents/{Frameworks,
 # Resources/licenses}; Windows/Linux use GNUInstallDirs BIN/LIB + top-level
 # licenses/. The app calls this once after its manifests run; MACOS_BUNDLE names
-# the .app (audacity.app / mscore.app). Reads the MUSE_DEPS_CONSUMED set and the
+# the .app (audacity.app / mscore.app). Reads the EXTDEPS_CONSUMED set and the
 # per-dep <name>_INSTALL_LIBRARIES / <name>_PREFIX globals the engine populates.
-function(muse_deps_install_consumed)
+function(extdeps_install_consumed)
     cmake_parse_arguments(ARG "" "MACOS_BUNDLE" "" ${ARGN})
-    get_property(_deps GLOBAL PROPERTY MUSE_DEPS_CONSUMED)
+    get_property(_deps GLOBAL PROPERTY EXTDEPS_CONSUMED)
     list(REMOVE_DUPLICATES _deps)
     foreach(_d ${_deps})
         get_property(_libs GLOBAL PROPERTY ${_d}_INSTALL_LIBRARIES)

@@ -1,20 +1,20 @@
 # muse_deps
 
 Dependency recipes, build tooling and prebuilt-binary index for Audacity 4.
-Consumed as a git submodule: the consumer includes `buildtools/consume.cmake`
-and drives it from its dependency manifest.
+Consumed as a git submodule: the app includes `buildtools/manifest.cmake` and
+drives it from its dependency manifest.
 
 ## Layout
 
 ```
 buildtools/
-  consume.cmake              consume engine: prebuilt (lock-verified) / source / system
+  resolve.cmake              resolver: prebuilt (lock-verified) / source / system
   build_dep_lib.cmake        builder: fetch (SHA-256) -> patch -> cmake build -> install
   build_platform.cmake       producer: build all recipes for one os/arch, pack per-dep archives
   mirror_sources.cmake       stage every pinned source tarball for the release
 prebuilt.lock                index of prebuilt archives: name version os arch file sha256 release
 <name>/
-  <name>.cmake               metadata: DEP_VERSION + consume keys (targets, libs, ...)
+  <name>.cmake               metadata: DEP_VERSION + resolve keys (targets, libs, ...)
   <version>/recipe/
     spec.cmake               source URL + SHA-256, cmake args, deps, patches, license
     patch/*.patch            optional

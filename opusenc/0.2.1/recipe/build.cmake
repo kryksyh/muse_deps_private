@@ -4,7 +4,7 @@
 # config.h (the only autotools macros the code needs; all HAVE_* checks are
 # #ifdef, i.e. absent == off) and define HAVE_CONFIG_H. OUTSIDE_SPEEX +
 # RANDOM_PREFIX namespace the bundled speex resampler (resample.c). ogg + opus are
-# header-only here (the app links the real libs via the consume targets), so we
+# header-only here (the app links the real libs via the resolved targets), so we
 # just add the dep include dirs. Runs in build_dep scope: SRC/INSTALL/BD_DEPENDS_PREFIXES.
 
 file(WRITE "${SRC}/config.h"

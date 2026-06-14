@@ -1,7 +1,7 @@
 # Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 3.2.6)
 
-# Consume metadata for wxWidgets (wxBase only). Non-standard layout (wx-config on
+# Resolve metadata for wxWidgets (wxBase only). Non-standard layout (wx-config on
 # unix, vc_x64_dll on Windows) + compile flags -> override.
 
 # Derive flags from a wx-config. install_libs = our libs to bundle (empty = system).
@@ -76,7 +76,7 @@ function(_wxwidgets_set_windows prefix)
     set_property(GLOBAL PROPERTY wxwidgets_INSTALL_LIBRARIES ${install})
 endfunction()
 
-function(wxwidgets_consume_override mode local_path os arch version)
+function(wxwidgets_resolve_override mode local_path os arch version)
     if(mode STREQUAL "system")
         find_program(WX_CONFIG NAMES wx-config)
         if(NOT WX_CONFIG)
@@ -86,10 +86,10 @@ function(wxwidgets_consume_override mode local_path os arch version)
     else()
         set(_ok FALSE)
         if(NOT mode STREQUAL "rebuild")
-            _muse_fetch_prebuilt(wxwidgets "${local_path}" "${os}" "${arch}" "${version}" _ok)
+            _extdeps_fetch_prebuilt(wxwidgets "${local_path}" "${os}" "${arch}" "${version}" _ok)
         endif()
         if(NOT _ok)
-            _muse_build(wxwidgets "${version}" "${local_path}" "${os}" "${arch}")
+            _extdeps_build(wxwidgets "${version}" "${local_path}" "${os}" "${arch}")
         endif()
         if(os STREQUAL "windows")
             _wxwidgets_set_windows("${local_path}")

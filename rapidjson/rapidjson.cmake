@@ -5,7 +5,7 @@ set(DEP_VERSION 24b5e7a)
 # Source-delivery, header-only: the consumer gets an INTERFACE target.
 set(DEP_KIND source)
 
-function(rapidjson_materialize)
+function(rapidjson_add_to_build)
     if(TARGET rapidjson)
         return()
     endif()
