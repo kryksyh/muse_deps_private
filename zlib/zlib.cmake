@@ -5,7 +5,6 @@ set(DEP_TARGET zlib::zlib)
 set(DEP_LIBS z)
 set(DEP_LIBS_WINDOWS zlib)
 set(DEP_SYSTEM_HEADER zlib.h)
-set(DEP_SYSTEM_LIBS z)
 
 # zlib is consumed two ways: our zlib::zlib target and third-party CMake we
 # vendor (bundled freetype, au3) calling find_package(ZLIB). Seed FindZLIB's

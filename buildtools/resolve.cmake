@@ -190,6 +190,11 @@ function(_extdeps_resolve_system name)
     foreach(s ${DEP_INCLUDE_SUBDIRS})
         list(APPEND inc "${${name}_INC}/${s}")
     endforeach()
+    # System lib names default to the built names; a recipe sets DEP_SYSTEM_LIBS
+    # only when the distro's name differs from what we build.
+    if(NOT DEFINED DEP_SYSTEM_LIBS)
+        set(DEP_SYSTEM_LIBS "${DEP_LIBS}")
+    endif()
     _extdeps_target_entries("${DEP_SYSTEM_LIBS}" entries)
     set(_primary_libs "")
     set(_first TRUE)

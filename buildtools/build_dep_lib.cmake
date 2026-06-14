@@ -245,10 +245,11 @@ function(build_dep)
     endforeach()
     include("${BD_RECIPE_DIR}/spec.cmake")
 
-    # Per-OS overrides DEP_<key>_<OS> append to the common keys. No per-arch level
+    # Per-OS overrides DEP_<key>_<OS> append to the common keys (build-consumed
+    # keys only; DEP_DEPENDS is resolved by the caller, not here). No per-arch level
     # (handled by the driver via the arch flag + archive naming).
     string(TOUPPER "${BD_OS}" _os)
-    foreach(_k CMAKE_ARGS PATCHES DEPENDS)
+    foreach(_k CMAKE_ARGS PATCHES)
         if(DEFINED DEP_${_k}_${_os})
             list(APPEND DEP_${_k} ${DEP_${_k}_${_os}})
         endif()
