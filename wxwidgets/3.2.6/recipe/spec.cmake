@@ -37,5 +37,4 @@ set(DEP_PATCHES_MACOS
     patch/0002-png-no-classic-mac-fp.patch
 )
 
-set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES "docs/licence.txt")

@@ -20,5 +20,4 @@ set(DEP_PATCHES patch/0001-cmake-arm64-has-fpu.patch)
 set(DEP_PATCHES_WINDOWS patch/0002-msvc-arm64-neon-gas-preprocessor.patch)
 set(DEP_CMAKE_ARGS_WINDOWS -DGAS_PREPROCESSOR=@RECIPE_DIR@/gas-preprocessor.pl)
 
-set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES COPYING)

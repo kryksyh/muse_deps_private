@@ -10,5 +10,4 @@ set(DEP_CMAKE_ARGS
 )
 set(DEP_PATCHES patch/0001-asm-language-detection.patch)
 
-set(DEP_MACOS_DEPLOYMENT_TARGET "12.0")
 set(DEP_LICENSE_FILES COPYING)
