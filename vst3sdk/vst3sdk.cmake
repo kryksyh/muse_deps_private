@@ -1,4 +1,4 @@
-# Pinned version — single source of truth for this dep.
+# Version lives here, not in the app.
 set(DEP_VERSION 3.7.12_build_20)
 
 # VST3 SDK host stack (Steinberg), source-delivery: the consumer's vst3sdk

@@ -1,8 +1,6 @@
-# Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically).
+# Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 12.3.0)
 
-# Consume metadata for harfbuzz (read by buildtools/consume.cmake). Build recipe: harfbuzz/<version>/recipe/spec.cmake.
 set(DEP_TARGET harfbuzz::harfbuzz)
 set(DEP_LIBS harfbuzz)
 set(DEP_INCLUDE_SUBDIRS harfbuzz)

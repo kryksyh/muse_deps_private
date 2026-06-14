@@ -1,6 +1,6 @@
-# Pinned version — single source of truth for this dep.
+# Version lives here, not in the app.
 set(DEP_VERSION 2026.06.12)
 
-# Build-time tool: breakpad's symbol dumper — turns built binaries' debug info
+# Build-time tool: breakpad's symbol dumper. Turns built binaries' debug info
 # into .sym files for crash-report symbolication (sentry upload in CI).
 set(DEP_KIND tool)

@@ -1,6 +1,6 @@
 # CI / local: build every buildable recipe for one platform; pack one archive per
 # dep, named <name>-<version>-<os>-<arch>-<sig12>.7z (sig = recipe signature, so a
-# recipe change yields a new name — assets stay immutable). Writes the archives
+# recipe change yields a new name and assets stay immutable). Writes the archives
 # plus a lock fragment (the per-dep "<name> <version> <os> <arch> <file> <sha256>"
 # lines) into .build/platform/out/.
 #
@@ -117,7 +117,7 @@ while(_remaining GREATER 0)
         set(_progress TRUE)
     endforeach()
     if(NOT _progress)
-        message(FATAL_ERROR "[platform] dependency cycle / missing dep — done: ${DONE}, all: ${ALL}")
+        message(FATAL_ERROR "[platform] dependency cycle / missing dep, done: ${DONE}, all: ${ALL}")
     endif()
     list(LENGTH DONE _d)
     list(LENGTH ALL _total)
@@ -134,7 +134,7 @@ foreach(_n ${ALL} ${TOOLS})
     string(SUBSTRING "${_sig}" 0 12 _sig)
     set(_file "${_n}-${_VER_${_n}}-${OS}-${ARCH}-${_sig}.7z")
     message(STATUS "[platform] package ${_file}")
-    # -mf=off: no BCJ branch filters — 7z's ARM64 filter is not decodable by
+    # -mf=off: no BCJ branch filters. 7z's ARM64 filter is not decodable by
     # CMake's libarchive, which then SILENTLY skips those entries on extract.
     execute_process(COMMAND ${SEVENZIP} a -t7z -mf=off "${OUT_DIR}/${_file}" . -x!.build_stamp
                     WORKING_DIRECTORY "${STAGE}/${_n}" RESULT_VARIABLE _rc)
@@ -142,7 +142,7 @@ foreach(_n ${ALL} ${TOOLS})
         message(FATAL_ERROR "[platform] package ${_n} failed (${_rc})")
     endif()
     # Consumers extract with file(ARCHIVE_EXTRACT), which does not fail on
-    # entries it cannot decode — prove round-trip completeness here.
+    # entries it cannot decode, so prove round-trip completeness here.
     set(_vdir "${OUT_DIR}/.verify")
     file(REMOVE_RECURSE "${_vdir}")
     file(MAKE_DIRECTORY "${_vdir}")
@@ -154,7 +154,7 @@ foreach(_n ${ALL} ${TOOLS})
     list(LENGTH _extracted _ne)
     math(EXPR _ns "${_ns} - 1")   # .build_stamp is excluded from the archive
     if(NOT _rc EQUAL 0 OR NOT _ns EQUAL _ne)
-        message(FATAL_ERROR "[platform] ${_file}: cmake extracted ${_ne}/${_ns} files — archive not consumable")
+        message(FATAL_ERROR "[platform] ${_file}: cmake extracted ${_ne}/${_ns} files, archive not consumable")
     endif()
     file(REMOVE_RECURSE "${_vdir}")
     file(SHA256 "${OUT_DIR}/${_file}" _sha)

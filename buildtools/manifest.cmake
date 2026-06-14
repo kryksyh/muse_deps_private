@@ -1,7 +1,7 @@
 # Consumer API: include this (after setting MUSE_DEPS_DIR if not the including
 # app's submodule layout), then run manifest files of require_dep /
 # require_source_dep calls. Resolution + imported targets only; installing the
-# bundled runtime libs/licenses is the app's packaging policy — each dep's set
+# bundled runtime libs/licenses is the app's packaging policy. Each consumed dep
 # accumulates in the MUSE_DEPS_CONSUMED global property (list of names; per-dep
 # globals <name>_INSTALL_LIBRARIES and <name>_PREFIX carry the rest).
 
@@ -15,8 +15,8 @@ endif()
 
 # Platform id used in prebuilt.lock (os: windows|linux|macos; arch: x86_64|aarch64|universal).
 # Script mode (cmake -P, e.g. the codestyle/crashdumps tools) has no toolchain
-# vars — CMAKE_SYSTEM_NAME/PROCESSOR are empty, which used to misdetect every
-# host as linux-x86_64; ask the host directly there.
+# vars: CMAKE_SYSTEM_NAME/PROCESSOR are empty, which misdetects every host as
+# linux-x86_64, so ask the host directly there.
 set(_muse_sys "${CMAKE_SYSTEM_NAME}")
 set(_muse_proc "${CMAKE_SYSTEM_PROCESSOR}")
 if (_muse_sys STREQUAL "")
@@ -69,7 +69,7 @@ if (MUSE_DEPS_CACHE)
 endif()
 
 # Include the dep's metadata (DEP_VERSION + consume keys), its recipe spec for
-# non-system modes, and the engine; run muse_consume.
+# non-system modes, and the engine, then run muse_consume.
 function(_muse_run name explicit_version mode out_version)
     set(local_path ${LOCAL_ROOT_PATH}/${name})
     include("${MUSE_DEPS_DIR}/${name}/${name}.cmake")
@@ -80,7 +80,7 @@ function(_muse_run name explicit_version mode out_version)
     endif()
     if (NOT mode STREQUAL "system")
         if ("${version}" STREQUAL "")
-            message(FATAL_ERROR "[deps] '${name}': no version — metadata DEP_VERSION missing and none given in the manifest")
+            message(FATAL_ERROR "[deps] '${name}': no version, metadata DEP_VERSION missing and none given in the manifest")
         endif()
         include("${MUSE_DEPS_DIR}/${name}/${version}/recipe/spec.cmake")
     endif()
@@ -114,7 +114,7 @@ function(require_dep name)
     # knobs must not flip it. Some SYSTEM deps (libcurl, openssl) have no recipe, so
     # forcing them to rebuild would fatally fail to find a spec.
     # Precedence: per-dep MUSE_BUILD_<NAME> wins (a "keep this one vendored" escape
-    # from MUSE_USE_SYSTEM_ALL — e.g. system base + a vendored dep), then the global
+    # from MUSE_USE_SYSTEM_ALL, i.e. system base + a vendored dep), then the global
     # system switch, then MUSE_BUILD_ALL.
     string(TOUPPER ${name} name_upper)
     if (NOT "${ARGV1}" STREQUAL "SYSTEM")
@@ -141,7 +141,7 @@ endfunction()
 # mpg123's x86/x64 asm decoder). Fetch the locked prebuilt (or build/find it),
 # then prepend its bin/ to PATH so later dep builds' find_program() locate it.
 # Must precede the deps that need it in the manifest. Honors
-# MUSE_USE_SYSTEM_<NAME> / MUSE_BUILD_<NAME> like require_dep.
+# MUSE_USE_SYSTEM_<NAME> / MUSE_BUILD_<NAME>, like require_dep.
 function(require_tool name)
     string(TOUPPER ${name} name_upper)
     set(mode "prebuilt")
@@ -163,15 +163,15 @@ function(require_tool name)
     endif()
 endfunction()
 
-# Source-delivery deps: muse_deps ships a pinned source tree the consumer
-# compiles in-tree — exposed via the ${name}_SOURCE_DIR global, or a target the
-# dep's post_consume builds. require_source_dep(<n> SYSTEM) binds the system
-# package instead (the dep's post_consume must implement that path). A dep whose
-# metadata sets DEP_SOURCE_SYSTEM also honors the global MUSE_USE_SYSTEM_ALL, so a
-# full system build (a distro package) gets it from the system too; deps with no
-# system path (picojson, googletest, vst3sdk, …) stay vendored regardless. Per-dep
-# MUSE_BUILD_<NAME> overrides the flip and keeps it vendored (system base + a
-# vendored chain — e.g. .mnx on a distro without nlohmann_json 3.12).
+# Source-delivery deps: muse_deps ships a pinned source tree the consumer compiles
+# in-tree, exposed via the ${name}_SOURCE_DIR global, or a target the dep's
+# post_consume builds. require_source_dep(<n> SYSTEM) binds the system package
+# instead (the dep's post_consume must implement that path). A dep whose metadata
+# sets DEP_SOURCE_SYSTEM also honors the global MUSE_USE_SYSTEM_ALL, so a full
+# system build gets it from the system too; deps with no system path (picojson,
+# googletest, vst3sdk, ...) stay vendored regardless. Per-dep MUSE_BUILD_<NAME>
+# overrides the flip and keeps it vendored (system base + a vendored chain, e.g.
+# .mnx on a distro without nlohmann_json 3.12).
 function(require_source_dep name)
     set(mode "rebuild")
     string(TOUPPER ${name} name_upper)
@@ -190,7 +190,7 @@ endfunction()
 # dir into the app layout. macOS bundles into <bundle>/Contents/{Frameworks,
 # Resources/licenses}; Windows/Linux use GNUInstallDirs BIN/LIB + top-level
 # licenses/. The app calls this once after its manifests run; MACOS_BUNDLE names
-# the .app (audacity.app / mscore.app). Reads the MUSE_DEPS_CONSUMED set + the
+# the .app (audacity.app / mscore.app). Reads the MUSE_DEPS_CONSUMED set and the
 # per-dep <name>_INSTALL_LIBRARIES / <name>_PREFIX globals the engine populates.
 function(muse_deps_install_consumed)
     cmake_parse_arguments(ARG "" "MACOS_BUNDLE" "" ${ARGN})

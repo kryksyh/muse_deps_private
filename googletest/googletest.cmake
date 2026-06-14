@@ -1,5 +1,4 @@
-# Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically).
+# Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 1.17.0)
 
 # Source-delivery: the framework adds it with add_subdirectory when unit tests

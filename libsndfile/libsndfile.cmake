@@ -1,8 +1,6 @@
-# Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically).
+# Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 1.2.2)
 
-# Consume metadata for libsndfile (read by buildtools/consume.cmake). Build recipe: libsndfile/<version>/recipe/spec.cmake.
 set(DEP_TARGET SndFile::sndfile)
 set(DEP_LIBS sndfile)
 set(DEP_SYSTEM_HEADER sndfile.h)

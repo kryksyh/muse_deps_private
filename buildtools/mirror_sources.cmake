@@ -1,8 +1,9 @@
 # Downloads every dep's pristine source tarball (from each recipe spec.cmake,
 # incl. source-delivery DEP_SOURCES entries), verifies its SHA-256, and stages it
-# as .build/mirror/<name>-<version>-src.<ext> (per-entry: <name>-<subdir>-src.<ext>). The producer attaches these to each dated
-# release: they are the corresponding sources of the published binaries AND the
-# fallback mirror build_dep_lib uses when upstream is down.
+# as .build/mirror/<name>-<version>-src.<ext> (per-entry: <name>-<subdir>-src.<ext>).
+# The producer attaches these to each dated release: they are the corresponding
+# sources of the published binaries AND the fallback mirror build_dep_lib uses
+# when upstream is down.
 #
 #   cmake -P buildtools/mirror_sources.cmake
 
@@ -15,7 +16,7 @@ file(MAKE_DIRECTORY "${OUT}")
 
 include("${CMAKE_CURRENT_LIST_DIR}/build_dep_lib.cmake")   # _bd_src_ext
 
-# Stage <url> as <label>-src.<ext> — our naming, not the upstream basename.
+# Stage <url> as <label>-src.<ext> (our naming, not the upstream basename).
 # Upstream is primary; the previous release's mirror asset (same SHA gate, far
 # more available than flaky upstreams like surina.net) is the fallback, so a
 # re-mirror never depends on every upstream being up at once.
@@ -62,7 +63,7 @@ function(_mirror_one spec)
     endforeach()
 endfunction()
 
-# NB: GLOB_RECURSE does not expand intermediate */ components — recurse on the
+# NB: GLOB_RECURSE does not expand intermediate */ components, so recurse on the
 # bare filename like build_platform does.
 file(GLOB_RECURSE specs "${REPO}/spec.cmake")
 foreach(spec ${specs})

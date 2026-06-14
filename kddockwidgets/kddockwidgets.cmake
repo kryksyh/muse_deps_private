@@ -1,4 +1,4 @@
-# Pinned version — single source of truth for this dep.
+# Version lives here, not in the app.
 set(DEP_VERSION 2.4)
 
 # Source-delivery: the consumer compiles it in-tree.

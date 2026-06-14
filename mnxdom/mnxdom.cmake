@@ -1,5 +1,5 @@
-# Pinned version — single source of truth (upstream project version 2.1, pinned
-# commit). Source-delivery: built in-tree.
+# Version 2.1 is the upstream project version; the pin is a commit. Source-
+# delivery: built in-tree.
 set(DEP_VERSION 2.1)
 set(DEP_KIND source)
 set(DEP_SOURCE_SYSTEM ON)   # has a system path; MUSE_USE_SYSTEM_ALL binds the distro mnxdom

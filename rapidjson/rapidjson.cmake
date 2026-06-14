@@ -1,6 +1,5 @@
-# Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically). Upstream's last release
-# (1.1.0, 2016) predates modern compilers; the pin is master, short sha.
+# Upstream's last release (1.1.0, 2016) predates modern compilers; the pin is
+# master, short sha.
 set(DEP_VERSION 24b5e7a)
 
 # Source-delivery, header-only: the consumer gets an INTERFACE target.

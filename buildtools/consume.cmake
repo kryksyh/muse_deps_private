@@ -4,7 +4,7 @@
 #
 # Prebuilt binaries are looked up in prebuilt.lock (repo root): one line per
 # "<name> <version> <os> <arch> <archive> <sha256> <release>". Each producer run
-# publishes into its own release, so archives are immutable; $MUSE_DEPS_PREBUILT_URL
+# publishes into its own release, so archives are immutable. $MUSE_DEPS_PREBUILT_URL
 # overrides the releases/download base for mirrors. SHA-verified, extracted into
 # local_path; any miss or failure falls back to building from source.
 #
@@ -14,17 +14,16 @@
 #   DEP_LIBS              base lib name(s), unix (e.g. "opus", "vorbis vorbisenc vorbisfile")
 #   DEP_TARGETS           multi-target deps only: a list of "target|libs" entries
 #                         (libs space-separated), one imported target each from the
-#                         same prefix — e.g. "FLAC::FLAC|FLAC" "FLAC::FLAC++|FLAC++".
+#                         same prefix (e.g. "FLAC::FLAC|FLAC" "FLAC::FLAC++|FLAC++").
 #                         Replaces DEP_TARGET/DEP_LIBS (and DEP_SYSTEM_LIBS) when set.
-#   DEP_LIBS_WINDOWS      base lib name(s), Windows (e.g. "wavpackdll", "portaudio_x64") — defaults to DEP_LIBS
+#   DEP_LIBS_WINDOWS      base lib name(s), Windows (e.g. "wavpackdll", "portaudio_x64"); defaults to DEP_LIBS
 #   DEP_STATIC_WINDOWS    ON if the Windows build is a static .lib (nothing to bundle)
 #   DEP_INCLUDE_SUBDIRS   extra include subdirs under <prefix>/include (e.g. "opus")
 #   DEP_SYSTEM_HEADER     find_path arg for SYSTEM mode (e.g. opus/opus.h)
 #   DEP_SYSTEM_LIBS       find_library name(s) for SYSTEM mode
-# A dep may instead define a function <name>_consume_override(mode local_path os
-# arch version) in its <name>/<name>.cmake to fully override resolution
-# (used by deps with a non-standard layout or system-only: wxwidgets, openssl,
-# libcurl).
+# A dep may instead define <name>_consume_override(mode local_path os arch version)
+# in its <name>/<name>.cmake to fully override resolution (deps with a non-standard
+# layout or system-only: wxwidgets, openssl, libcurl).
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -38,7 +37,7 @@ function(_muse_resolve_libs prefix os libnames out_link out_bundle)
     set(bundle "")
     # The version/soname suffix always begins with a dot, so anchor globs with the
     # literal "." after the base name (else lib<vorbis>* greedily matches
-    # lib<vorbisenc>). Link is the exact dev symlink/import lib.
+    # lib<vorbisenc>). Link is the exact dev symlink / import lib.
     foreach(n ${libnames})
         if(os STREQUAL "windows")
             list(APPEND link "${prefix}/lib/${n}.lib")        # import lib
@@ -118,8 +117,8 @@ endfunction()
 # Normalize a dep's imported targets to a list of "target|libs" entries: explicit
 # DEP_TARGETS (one per line, libs space-separated), else a single entry from
 # DEP_TARGET + the given lib list (per-OS DEP_LIBS for builds, DEP_SYSTEM_LIBS for
-# system). Lets one dep expose several targets from one prefix (e.g. flac's
-# FLAC::FLAC + FLAC::FLAC++) without a custom override.
+# system). Lets one dep expose several targets from one prefix (flac's FLAC::FLAC +
+# FLAC::FLAC++) without a custom override.
 macro(_muse_target_entries fallback_libs out)
     if(DEFINED DEP_TARGETS)
         set(${out} "${DEP_TARGETS}")
@@ -225,8 +224,8 @@ endfunction()
 # Look up <name version os arch> in prebuilt.lock, download the archive
 # (cache-first, SHA-verified) and extract it into local_path. Sets <out> TRUE on
 # success; any miss or failure returns FALSE and the caller builds from source.
-# A .prebuilt stamp records the archive name (it embeds the recipe signature), so
-# a lock update re-extracts and an unchanged reconfigure is a no-op.
+# The .prebuilt stamp records the archive name (which embeds the recipe signature),
+# so a lock update re-extracts and an unchanged reconfigure is a no-op.
 function(_muse_fetch_prebuilt name local_path os arch version out)
     set(${out} FALSE PARENT_SCOPE)
     set(lock "${_MUSE_DEPS_ROOT}/prebuilt.lock")
@@ -246,7 +245,7 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
     string(REPLACE " " ";" entry "${entry}")
     list(LENGTH entry _n)
     if(NOT _n EQUAL 7)
-        message(STATUS "[${name}] malformed lock entry — building from source")
+        message(STATUS "[${name}] malformed lock entry, building from source")
         return()
     endif()
     list(GET entry 2 lock_os)
@@ -255,12 +254,12 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
     list(GET entry 5 sha)
     list(GET entry 6 release)
 
-    # A lock line older than the local recipe must not be consumed: the archive
-    # name embeds the recipe signature.
+    # The archive name embeds the recipe signature, so a lock line older than the
+    # local recipe must not be consumed.
     _bd_recipe_sig("${_MUSE_DEPS_ROOT}/${name}/${version}/recipe" "${lock_os}" "${lock_arch}" _cursig)
     string(SUBSTRING "${_cursig}" 0 12 _cursig)
     if(NOT file MATCHES "-${_cursig}\\.7z$")
-        message(STATUS "[${name}] lock entry ${file} doesn't match the local recipe (${_cursig}) — building from source")
+        message(STATUS "[${name}] lock entry ${file} doesn't match the local recipe (${_cursig}), building from source")
         return()
     endif()
 
@@ -283,7 +282,7 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
         endif()
     endif()
     if(NOT ok)
-        # Base of the releases/download tree; each lock line names its release.
+        # Base of the releases/download tree (each lock line names its release).
         set(url "$ENV{MUSE_DEPS_PREBUILT_URL}")
         if(NOT url)
             set(url "https://github.com/kryksyh/muse_deps_private/releases/download")
@@ -314,17 +313,17 @@ function(_muse_fetch_prebuilt name local_path os arch version out)
     set(${out} TRUE PARENT_SCOPE)
 endfunction()
 
-# Source-delivery (amalgamated, e.g. lv2 stack): fetch each entry of DEP_SOURCES
-# ("subdir|tarball|url|sha256" or "subdir|git|repo|commit") cache-first into the
-# cache, extract into local_path/<subdir>; expose <name>_SOURCE_DIR. The consumer
-# compiles these in-tree.
+# Source-delivery (amalgamated, e.g. lv2 stack): fetch each DEP_SOURCES entry
+# ("subdir|tarball|url|sha256" or "subdir|git|repo|commit") cache-first, extract
+# into local_path/<subdir>, expose <name>_SOURCE_DIR. The consumer compiles these
+# in-tree.
 function(_muse_populate_source name local_path version)
     _bd_resolve_cache(cache)
     set(dl "${cache}/downloads/${name}")
     file(MAKE_DIRECTORY "${dl}")
     set(_recipe_dir "${_MUSE_DEPS_ROOT}/${name}/${version}/recipe")
-    # Stamp the pins, not just presence: a version/pin/patch change (or residue
-    # from another mechanism) must wipe and repopulate, never reuse stale sources.
+    # Stamp the pins, not just presence: a version/pin/patch change (or stray
+    # residue) must wipe and repopulate, never reuse stale sources.
     set(_pins "${DEP_SOURCES}")
     foreach(pe ${DEP_SOURCE_PATCHES})
         string(REPLACE "|" ";" pf "${pe}")
@@ -388,8 +387,8 @@ function(_muse_populate_source name local_path version)
                 endif()
             endif()
         endforeach()
-        # "subdir|patch/file.patch" entries, applied -p1 inside local_path/<subdir>
-        # (GIT_DIR override: git apply silently skips patches inside enclosing repos).
+        # "subdir|patch/file.patch" entries, applied -p1 inside local_path/<subdir>.
+        # GIT_DIR override: inside an enclosing repo git apply silently skips the patch.
         foreach(pe ${DEP_SOURCE_PATCHES})
             string(REPLACE "|" ";" pf "${pe}")
             list(GET pf 0 psub)
@@ -405,9 +404,9 @@ function(_muse_populate_source name local_path version)
 endfunction()
 
 # Binary-dist tools: official upstream release binaries, mirrored as immutable
-# assets in our releases and pinned by per-platform sha256 in the recipe spec —
-# nothing to build, so no lock line; the spec is the pin (the same way
-# DEP_SOURCE_SHA256 pins a source build).
+# assets in our releases and pinned by per-platform sha256 in the recipe spec.
+# Nothing to build, so no lock line; the spec is the pin (like DEP_SOURCE_SHA256
+# pins a source build).
 function(_muse_fetch_binary_tool name local_path os arch)
     if(NOT DEFINED DEP_BINARY_FILE_${os}-${arch})
         message(FATAL_ERROR "[${name}] no binary for ${os}/${arch}")
@@ -446,8 +445,8 @@ endfunction()
 # Single entry point. The consumer includes the dep's metadata (+ spec for
 # non-system modes) and this engine, then calls muse_consume(...).
 function(muse_consume name version mode local_path os arch)
-    # Per-dep override for non-standard layouts / multiple targets (wx, flac, openssl):
-    # the dep's version-agnostic metadata file may define <name>_consume_override().
+    # Per-dep override for non-standard layouts / multiple targets (wx, flac,
+    # openssl): the dep's metadata file may define <name>_consume_override().
     if(COMMAND ${name}_consume_override)
         cmake_language(CALL ${name}_consume_override "${mode}" "${local_path}" "${os}" "${arch}" "${version}")
         return()
@@ -458,8 +457,8 @@ function(muse_consume name version mode local_path os arch)
             _muse_resolve_system("${name}")
         else()
             # rebuild: always from source. prebuilt: extract the archive, falling
-            # back to source if this platform has none. Either way local_path ends
-            # up populated, then we resolve it identically.
+            # back to source if this platform has none. Either way local_path is
+            # populated, then resolved identically.
             if(mode STREQUAL "rebuild")
                 _muse_build("${name}" "${version}" "${local_path}" "${os}" "${arch}")
             else()
@@ -473,7 +472,7 @@ function(muse_consume name version mode local_path os arch)
         endif()
 
     elseif(DEP_KIND STREQUAL "source")
-        # SYSTEM mode binds the distro package (in post_consume) — nothing to fetch.
+        # SYSTEM mode binds the distro package (in post_consume), nothing to fetch.
         if(NOT mode STREQUAL "system")
             _muse_populate_source("${name}" "${local_path}" "${version}")
         endif()
@@ -507,9 +506,9 @@ function(muse_consume name version mode local_path os arch)
         message(FATAL_ERROR "[${name}] unknown DEP_KIND: ${DEP_KIND}")
     endif()
 
-    # Optional metadata hook: bridge work the dep needs at its consumer (e.g.
-    # zlib seeds FindZLIB, source-delivery deps add_subdirectory their tree) —
-    # keeps dep-internal knowledge out of app CMake.
+    # Optional metadata hook: bridge work the dep needs at its consumer (zlib
+    # seeds FindZLIB, source-delivery deps add_subdirectory their tree). Keeps
+    # dep-internal knowledge out of app CMake.
     if(COMMAND ${name}_post_consume)
         cmake_language(CALL ${name}_post_consume "${mode}" "${local_path}" "${os}" "${arch}" "${version}")
     endif()

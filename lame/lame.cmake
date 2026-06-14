@@ -1,8 +1,6 @@
-# Pinned version — single source of truth for this dep (the consumer reads it;
-# the muse_deps ref pins the whole set atomically).
+# Version lives here, not in the app; the muse_deps ref pins the whole set.
 set(DEP_VERSION 3.100)
 
-# Consume metadata for lame (read by buildtools/consume.cmake). Build recipe: lame/<version>/recipe/spec.cmake.
 # Shared on unix; static (mp3lame.lib) on Windows.
 set(DEP_TARGET libmp3lame::libmp3lame)
 set(DEP_LIBS mp3lame)

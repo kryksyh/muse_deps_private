@@ -4,8 +4,8 @@
 #
 # build_dep(NAME <n> RECIPE_DIR <d> OS <os> ARCH <a> WORK <w> INSTALL_DIR <i> [CACHE <c>])
 #   sources -> patch -> cmake configure/build/install into INSTALL_DIR.
-#   NB: deps are ALWAYS built RelWithDebInfo — a Debug dep would mismatch the app's
-#   CRT on Windows (/MDd vs /MD).
+#   Deps are ALWAYS built RelWithDebInfo: a Debug dep would mismatch the app's CRT
+#   on Windows (/MDd vs /MD).
 #   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies <d>/patch/*.patch.
 #   Pristine source archives are fetched into a persistent, SHA-verified cache
 #   (CACHE, or $MUSE_DEPS_CACHE, or ~/.cache/muse_deps) so rebuilds and offline
@@ -37,7 +37,7 @@ endfunction()
 # Source mirror tried when upstream fails: $MUSE_DEPS_MIRROR, else the dated
 # release recorded for <name> in prebuilt.lock (sources are attached alongside
 # the prebuilt archives; assets are named <name>-<archive>). Empty when neither
-# exists (e.g. a brand-new dep) — upstream is then the only source.
+# exists (e.g. a brand-new dep), so upstream is then the only source.
 function(_bd_mirror name repo_root out)
     if(DEFINED ENV{MUSE_DEPS_MIRROR})
         set(${out} "$ENV{MUSE_DEPS_MIRROR}" PARENT_SCOPE)
@@ -161,9 +161,9 @@ function(_bd_ensure_sonames os name install_dir)
         get_filename_component(_dir "${_so}" DIRECTORY)
         get_filename_component(_base "${_so}" NAME)
         # Names a dependent may record as DT_NEEDED: the conventional major-version
-        # (lib<x>.so.<major> — what most builds use) AND the lib's own DT_SONAME
-        # (some builds set it to the full version, e.g. libvorbisenc.so.2.0.12, in
-        # which case the major link is still the one dependents need).
+        # link (lib<x>.so.<major>, what most builds use) AND the lib's own DT_SONAME
+        # (some builds set it to the full version, e.g. libvorbisenc.so.2.0.12, where
+        # the major link is still the one dependents need).
         set(_wanted "")
         if(_base MATCHES "^(.+\\.so\\.[0-9]+)\\.")
             list(APPEND _wanted "${CMAKE_MATCH_1}")
@@ -189,8 +189,8 @@ endfunction()
 
 # macOS: make installed dylibs relocatable by forcing LC_ID_DYLIB to @rpath/<base>.
 # Most builds already do this, but some (mpg123's CMake port, lame's libtool) bake
-# the absolute install prefix — which would bind a prebuilt to the build machine's
-# path and break it for any consumer. Idempotent, so it also runs on rebuild-skip.
+# the absolute install prefix, which binds a prebuilt to the build machine's path
+# and breaks it for any consumer. Idempotent, so it also runs on rebuild-skip.
 function(_bd_relocatable_macos os install_dir)
     if(NOT os STREQUAL "macos")
         return()
@@ -234,9 +234,9 @@ endfunction()
 function(build_dep)
     cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
 
-    # Clear any ambient DEP_* so the spec starts from a clean slate — a caller that
-    # builds many deps in one process (build_platform) must not leak one recipe's
-    # DEP_PATCHES/flags into the next dep whose spec doesn't set them.
+    # Clear any ambient DEP_* so the spec starts clean: a caller that builds many
+    # deps in one process (build_platform) must not leak one recipe's DEP_PATCHES/
+    # flags into the next dep whose spec doesn't set them.
     get_cmake_property(_allvars VARIABLES)
     foreach(_v ${_allvars})
         if(_v MATCHES "^DEP_")
@@ -254,13 +254,13 @@ function(build_dep)
         endif()
     endforeach()
 
-    # Skip the rebuild when the recipe is unchanged — makes reconfigures fast.
+    # Skip the rebuild when the recipe is unchanged (fast reconfigures).
     _bd_recipe_sig("${BD_RECIPE_DIR}" "${BD_OS}" "${BD_ARCH}" _build_sig)
     set(_build_stamp "${BD_INSTALL_DIR}/.build_stamp")
     if(EXISTS "${_build_stamp}")
         file(READ "${_build_stamp}" _prev_sig)
         if(_prev_sig STREQUAL "${_build_sig}")
-            message(STATUS "[${BD_NAME}] up-to-date (recipe unchanged) — skipping build")
+            message(STATUS "[${BD_NAME}] up-to-date (recipe unchanged), skipping build")
             _bd_ensure_sonames("${BD_OS}" "${BD_NAME}" "${BD_INSTALL_DIR}")
             _bd_relocatable_macos("${BD_OS}" "${BD_INSTALL_DIR}")
             return()
@@ -278,7 +278,7 @@ function(build_dep)
     file(REMOVE_RECURSE "${BD_WORK}")
     file(MAKE_DIRECTORY "${BD_WORK}")
 
-    # 1. sources — pristine tarball, cache-first: reuse a cached copy (re-verifying
+    # 1. sources, pristine tarball, cache-first: reuse a cached copy (re-verifying
     # its SHA so tampering/corruption is caught), else download into the cache
     # (file(DOWNLOAD) verifies on fetch), then extract.
     get_filename_component(an "${DEP_SOURCE_URL}" NAME)
@@ -316,7 +316,7 @@ function(build_dep)
         file(RENAME "${extract}" "${SRC}")
     endif()
 
-    # 2. patch — from the (merged) DEP_PATCHES list so OS-specific patches only
+    # 2. patch, from the (merged) DEP_PATCHES list so OS-specific patches only
     # apply on their OS (entries are paths relative to the recipe dir).
     # GIT_DIR=nonexistent forces plain out-of-repo apply: inside an enclosing
     # repo, git scopes patch paths against the repo root and SILENTLY SKIPS
