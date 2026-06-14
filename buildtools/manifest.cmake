@@ -84,6 +84,18 @@ function(_muse_run name explicit_version mode out_version)
         endif()
         include("${MUSE_DEPS_DIR}/${name}/${version}/recipe/spec.cmake")
     endif()
+    # A "local" source builds a working tree in place: point local_path at its
+    # parent so both SOURCE_DIR consumers and post_consume hooks (which take
+    # local_path) resolve <local_path>/<subdir> to it. _muse_populate_source skips
+    # the fetch.
+    foreach(_s ${DEP_SOURCES})
+        string(REPLACE "|" ";" _sf "${_s}")
+        list(GET _sf 1 _sk)
+        if(_sk STREQUAL "local")
+            list(GET _sf 2 _sloc)
+            get_filename_component(local_path "${_sloc}" DIRECTORY)
+        endif()
+    endforeach()
     include("${MUSE_DEPS_DIR}/buildtools/consume.cmake")
     muse_consume("${name}" "${version}" "${mode}" "${local_path}" "${LIB_OS}" "${LIB_ARCH}")
     set_property(GLOBAL PROPERTY ${name}_PREFIX "${local_path}")

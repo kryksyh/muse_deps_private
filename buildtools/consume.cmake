@@ -316,8 +316,32 @@ endfunction()
 # Source-delivery (amalgamated, e.g. lv2 stack): fetch each DEP_SOURCES entry
 # ("subdir|tarball|url|sha256" or "subdir|git|repo|commit") cache-first, extract
 # into local_path/<subdir>, expose <name>_SOURCE_DIR. The consumer compiles these
-# in-tree.
+# in-tree. "subdir|local|/path/to/subdir" builds a working tree in place instead
+# (no fetch, live edits) for iterating on a dep; keep it out of committed recipes.
 function(_muse_populate_source name local_path version)
+    # A "local" source (<subdir>|local|<path>) builds a working tree on disk in
+    # place: no fetch, no copy, live edits. SOURCE_DIR becomes its parent so the
+    # consumer's add_subdirectory(${SOURCE_DIR}/<subdir>) hits it. For iterating on
+    # a dep locally; keep it out of the committed recipe.
+    foreach(e ${DEP_SOURCES})
+        string(REPLACE "|" ";" f "${e}")
+        list(GET f 1 kind)
+        if(kind STREQUAL "local")
+            list(GET f 0 sub)
+            list(GET f 2 loc)
+            get_filename_component(base "${loc}" NAME)
+            if(NOT IS_DIRECTORY "${loc}")
+                message(FATAL_ERROR "[${name}] local source not found: ${loc}")
+            elseif(NOT base STREQUAL sub)
+                message(FATAL_ERROR "[${name}] local source dir must be named '${sub}': ${loc}")
+            endif()
+            get_filename_component(parent "${loc}" DIRECTORY)
+            message(STATUS "[${name}] local source: ${loc}")
+            set_property(GLOBAL PROPERTY ${name}_SOURCE_DIR "${parent}")
+            return()
+        endif()
+    endforeach()
+
     _bd_resolve_cache(cache)
     set(dl "${cache}/downloads/${name}")
     file(MAKE_DIRECTORY "${dl}")
