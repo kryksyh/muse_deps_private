@@ -1,7 +1,7 @@
-diff --git a/liblouis.h.in b/liblouis.h.in
+diff --git a/liblouis/liblouis.h.in b/liblouis/liblouis.h.in
 index 88d7996895..1f91995ad0 100644
---- a/liblouis.h.in
-+++ b/liblouis.h.in
+--- a/liblouis/liblouis.h.in
++++ b/liblouis/liblouis.h.in
 @@ -41,7 +41,7 @@ typedef @WIDECHAR_TYPE@ widechar;
  // clang-format on
  typedef unsigned short formtype;
@@ -11,10 +11,10 @@ index 88d7996895..1f91995ad0 100644
  #ifdef _EXPORTING
  #define LIBLOUIS_API __declspec(dllexport)
  #else
-diff --git a/lou_translateString.c b/lou_translateString.c
+diff --git a/liblouis/lou_translateString.c b/liblouis/lou_translateString.c
 index dc0b8a35e3..f92b1d761e 100644
---- a/lou_translateString.c
-+++ b/lou_translateString.c
+--- a/liblouis/lou_translateString.c
++++ b/liblouis/lou_translateString.c
 @@ -2290,7 +2290,12 @@ undefinedCharacter(widechar c, const TranslationTableHeader *table, int pos,
  
  	const char *text = (mode & noUndefined) ? "" : _lou_showString(&c, 1, 1);
