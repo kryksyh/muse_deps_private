@@ -6,7 +6,7 @@
 #   sources -> patch -> cmake configure/build/install into INSTALL_DIR.
 #   Deps are ALWAYS built RelWithDebInfo: a Debug dep would mismatch the app's CRT
 #   on Windows (/MDd vs /MD).
-#   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies <d>/patch/*.patch.
+#   Requires git + cmake on PATH. Reads <d>/spec.cmake; applies DEP_PATCHES.
 #   Pristine source archives are fetched into a persistent, SHA-verified cache
 #   (CACHE, or $EXTDEPS_CACHE, or ~/.cache/extdeps) so rebuilds and offline
 #   builds reuse them; only the extracted + patched tree and build dir are

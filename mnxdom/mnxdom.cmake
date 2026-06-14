@@ -2,7 +2,7 @@
 # delivery: built in-tree.
 set(DEP_VERSION 2.1)
 set(DEP_KIND source)
-set(DEP_SOURCE_SYSTEM ON)   # has a system path; EXTDEPS_USE_SYSTEM_ALL binds the distro mnxdom
+set(DEP_SOURCE_SYSTEM ON)   # has a system path; EXTDEPS_OVERRIDE_ALL=SYSTEM binds the distro mnxdom
 
 # The engine builds an `mnxdom` target in-tree from the vendored source, wiring
 # mnxdom's otherwise-FetchContent'd deps to the extdeps chain: nlohmann_json +

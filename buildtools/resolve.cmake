@@ -15,12 +15,11 @@
 #   DEP_TARGETS           multi-target deps only: a list of "target|libs" entries
 #                         (libs space-separated), one imported target each from the
 #                         same prefix (e.g. "FLAC::FLAC|FLAC" "FLAC::FLAC++|FLAC++").
-#                         Replaces DEP_TARGET/DEP_LIBS (and DEP_SYSTEM_LIBS) when set.
+#                         Replaces DEP_TARGET/DEP_LIBS when set.
 #   DEP_LIBS_WINDOWS      base lib name(s), Windows (e.g. "wavpackdll", "portaudio_x64"); defaults to DEP_LIBS
 #   DEP_STATIC_WINDOWS    ON if the Windows build is a static .lib (nothing to bundle)
 #   DEP_INCLUDE_SUBDIRS   extra include subdirs under <prefix>/include (e.g. "opus")
 #   DEP_SYSTEM_HEADER     find_path arg for SYSTEM mode (e.g. opus/opus.h)
-#   DEP_SYSTEM_LIBS       find_library name(s) for SYSTEM mode
 # A dep may instead define <name>_resolve_override(mode local_path os arch version)
 # in its <name>/<name>.cmake to fully override resolution (deps with a non-standard
 # layout or system-only: wxwidgets, openssl, libcurl).
@@ -116,9 +115,8 @@ endfunction()
 
 # Normalize a dep's imported targets to a list of "target|libs" entries: explicit
 # DEP_TARGETS (one per line, libs space-separated), else a single entry from
-# DEP_TARGET + the given lib list (per-OS DEP_LIBS for builds, DEP_SYSTEM_LIBS for
-# system). Lets one dep expose several targets from one prefix (flac's FLAC::FLAC +
-# FLAC::FLAC++) without a custom override.
+# DEP_TARGET + the given lib list. Lets one dep expose several targets from one
+# prefix (flac's FLAC::FLAC + FLAC::FLAC++) without a custom override.
 macro(_extdeps_target_entries fallback_libs out)
     if(DEFINED DEP_TARGETS)
         set(${out} "${DEP_TARGETS}")
@@ -190,12 +188,7 @@ function(_extdeps_resolve_system name)
     foreach(s ${DEP_INCLUDE_SUBDIRS})
         list(APPEND inc "${${name}_INC}/${s}")
     endforeach()
-    # System lib names default to the built names; a recipe sets DEP_SYSTEM_LIBS
-    # only when the distro's name differs from what we build.
-    if(NOT DEFINED DEP_SYSTEM_LIBS)
-        set(DEP_SYSTEM_LIBS "${DEP_LIBS}")
-    endif()
-    _extdeps_target_entries("${DEP_SYSTEM_LIBS}" entries)
+    _extdeps_target_entries("${DEP_LIBS}" entries)
     set(_primary_libs "")
     set(_first TRUE)
     foreach(_e ${entries})
@@ -215,9 +208,7 @@ endfunction()
 # Build from source into local_path, using the recipe from the deps repo.
 function(_extdeps_build name version local_path os arch)
     set(prefixes "")
-    foreach(dv ${DEP_DEPENDS})
-        string(REPLACE "/" ";" _p "${dv}")
-        list(GET _p 0 _dn)
+    foreach(_dn ${DEP_DEPENDS})
         list(APPEND prefixes "${local_path}/../${_dn}")   # sibling _deps prefix (built earlier)
     endforeach()
     build_dep(NAME ${name} RECIPE_DIR "${_EXTDEPS_ROOT}/${name}/${version}/recipe"

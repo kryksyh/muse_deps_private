@@ -1,6 +1,6 @@
 # Build recipe for flac 1.4.3.
 
-set(DEP_SOURCE_URL    https:)
+set(DEP_SOURCE_URL    "https://github.com/xiph/flac/releases/download/1.4.3/flac-1.4.3.tar.xz")
 set(DEP_SOURCE_SHA256 "6c58e69cd22348f441b861092b825e591d0b822e106de6eb0ee4d05d27205b70")
 
 set(DEP_DEPENDS ogg)
