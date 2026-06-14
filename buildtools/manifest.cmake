@@ -53,13 +53,10 @@ if (NOT DEFINED LIB_ARCH OR LIB_ARCH STREQUAL "")
     endif()
 endif()
 
-# Allow forcing modes from the environment (CI/offline can't always thread cache
+# Allow forcing the mode from the environment (CI/offline can't always thread cache
 # vars through the build driver). An explicit -D always wins.
-if (NOT DEFINED EXTDEPS_BUILD_ALL AND DEFINED ENV{EXTDEPS_BUILD_ALL})
-    set(EXTDEPS_BUILD_ALL "$ENV{EXTDEPS_BUILD_ALL}")
-endif()
-if (NOT DEFINED EXTDEPS_USE_SYSTEM_ALL AND DEFINED ENV{EXTDEPS_USE_SYSTEM_ALL})
-    set(EXTDEPS_USE_SYSTEM_ALL "$ENV{EXTDEPS_USE_SYSTEM_ALL}")
+if (NOT DEFINED EXTDEPS_OVERRIDE_ALL AND DEFINED ENV{EXTDEPS_OVERRIDE_ALL})
+    set(EXTDEPS_OVERRIDE_ALL "$ENV{EXTDEPS_OVERRIDE_ALL}")
 endif()
 
 # Pristine source cache for source/REBUILD builds: -DEXTDEPS_CACHE wins, else a
@@ -103,6 +100,36 @@ function(_extdeps_run name explicit_version mode out_version)
     set(${out_version} "${version}" PARENT_SCOPE)
 endfunction()
 
+# Override the manifest-declared mode. EXTDEPS_OVERRIDE_<NAME> (per-dep, wins) or
+# EXTDEPS_OVERRIDE_ALL (global) name a mode: REBUILD | SYSTEM | PREBUILT (the same
+# words as the require_dep DSL). Returns the mapped mode in <out>, or "" when no
+# override applies. A blanket OVERRIDE_ALL leaves a manifest-declared SYSTEM dep
+# alone (libcurl/openssl have no recipe to rebuild); an explicit per-dep override
+# always wins, and fails loudly downstream if it cannot be honored.
+function(_extdeps_override name manifest_mode out)
+    string(TOUPPER ${name} _u)
+    set(_v "")
+    if (DEFINED EXTDEPS_OVERRIDE_${_u})
+        set(_v "${EXTDEPS_OVERRIDE_${_u}}")
+    elseif (DEFINED EXTDEPS_OVERRIDE_ALL AND NOT manifest_mode STREQUAL "system")
+        set(_v "${EXTDEPS_OVERRIDE_ALL}")
+    endif()
+    if ("${_v}" STREQUAL "")
+        set(${out} "" PARENT_SCOPE)
+        return()
+    endif()
+    string(TOUPPER "${_v}" _v)
+    if (_v STREQUAL "REBUILD")
+        set(${out} "rebuild" PARENT_SCOPE)
+    elseif (_v STREQUAL "SYSTEM")
+        set(${out} "system" PARENT_SCOPE)
+    elseif (_v STREQUAL "PREBUILT")
+        set(${out} "prebuilt" PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "[deps] ${name}: EXTDEPS_OVERRIDE_* must be REBUILD, SYSTEM or PREBUILT (got '${_v}')")
+    endif()
+endfunction()
+
 # Resolve include dirs / link libs / install libs for a dep and set its imported
 # target. Mode is decided here; the engine does the work, driven by metadata.
 function(require_dep name)
@@ -122,21 +149,9 @@ function(require_dep name)
         endif()
     endif()
 
-    # A manifest-declared SYSTEM is sticky: the global EXTDEPS_BUILD_ALL/EXTDEPS_USE_SYSTEM
-    # knobs must not flip it. Some SYSTEM deps (libcurl, openssl) have no recipe, so
-    # forcing them to rebuild would fatally fail to find a spec.
-    # Precedence: per-dep EXTDEPS_BUILD_<NAME> wins (a "keep this one vendored" escape
-    # from EXTDEPS_USE_SYSTEM_ALL, i.e. system base + a vendored dep), then the global
-    # system switch, then EXTDEPS_BUILD_ALL.
-    string(TOUPPER ${name} name_upper)
-    if (NOT "${ARGV1}" STREQUAL "SYSTEM")
-        if (EXTDEPS_BUILD_${name_upper})
-            set(mode "rebuild")
-        elseif (EXTDEPS_USE_SYSTEM_ALL)
-            set(mode "system")
-        elseif (EXTDEPS_BUILD_ALL)
-            set(mode "rebuild")
-        endif()
+    _extdeps_override("${name}" "${mode}" _ov)
+    if (NOT "${_ov}" STREQUAL "")
+        set(mode "${_ov}")
     endif()
 
     _extdeps_run("${name}" "${explicit_version}" "${mode}" version)
@@ -152,15 +167,13 @@ endfunction()
 # Build-time tools (host executables a dep needs while building, e.g. yasm for
 # mpg123's x86/x64 asm decoder). Fetch the locked prebuilt (or build/find it),
 # then prepend its bin/ to PATH so later dep builds' find_program() locate it.
-# Must precede the deps that need it in the manifest. Honors
-# EXTDEPS_USE_SYSTEM_<NAME> / EXTDEPS_BUILD_<NAME>, like require_dep.
+# Must precede the deps that need it in the manifest. Honors EXTDEPS_OVERRIDE_<NAME>
+# / EXTDEPS_OVERRIDE_ALL, like require_dep.
 function(require_tool name)
-    string(TOUPPER ${name} name_upper)
     set(mode "prebuilt")
-    if (EXTDEPS_USE_SYSTEM_ALL OR EXTDEPS_USE_SYSTEM_${name_upper})
-        set(mode "system")
-    elseif (EXTDEPS_BUILD_ALL OR EXTDEPS_BUILD_${name_upper})
-        set(mode "rebuild")
+    _extdeps_override("${name}" "${mode}" _ov)
+    if (NOT "${_ov}" STREQUAL "")
+        set(mode "${_ov}")
     endif()
     _extdeps_run("${name}" "" "${mode}" version)
 
@@ -178,21 +191,25 @@ endfunction()
 # Source-delivery deps: extdeps ships a pinned source tree the consumer compiles
 # in-tree, exposed via the ${name}_SOURCE_DIR global, or a target the dep's
 # post_resolve builds. require_source_dep(<n> SYSTEM) binds the system package
-# instead (the dep's post_resolve must implement that path). A dep whose metadata
-# sets DEP_SOURCE_SYSTEM also honors the global EXTDEPS_USE_SYSTEM_ALL, so a full
-# system build gets it from the system too; deps with no system path (picojson,
-# googletest, vst3sdk, ...) stay vendored regardless. Per-dep EXTDEPS_BUILD_<NAME>
-# overrides the flip and keeps it vendored (system base + a vendored chain, e.g.
-# .mnx on a distro without nlohmann_json 3.12).
+# instead (the dep's post_resolve must implement that path). Overrides apply as
+# elsewhere, except a source dep reaches "system" only if it declares a system path
+# (DEP_SOURCE_SYSTEM): a blanket EXTDEPS_OVERRIDE_ALL=SYSTEM binds the ones that can
+# and leaves picojson/googletest/vst3sdk/... building, and a per-dep
+# EXTDEPS_OVERRIDE_<NAME>=REBUILD keeps one vendored under a system base (e.g. the
+# .mnx chain on a distro without nlohmann_json 3.12).
 function(require_source_dep name)
     set(mode "rebuild")
-    string(TOUPPER ${name} name_upper)
     if ("${ARGV1}" STREQUAL "SYSTEM")
         set(mode "system")
-    elseif (EXTDEPS_USE_SYSTEM_ALL AND NOT EXTDEPS_BUILD_${name_upper})
+    endif()
+    _extdeps_override("${name}" "${mode}" _ov)
+    if (NOT "${_ov}" STREQUAL "")
+        set(mode "${_ov}")
+    endif()
+    if (mode STREQUAL "system" AND NOT "${ARGV1}" STREQUAL "SYSTEM")
         include("${EXTDEPS_DIR}/${name}/${name}.cmake")   # reads DEP_SOURCE_SYSTEM
-        if (DEP_SOURCE_SYSTEM)
-            set(mode "system")
+        if (NOT DEP_SOURCE_SYSTEM)
+            set(mode "rebuild")
         endif()
     endif()
     _extdeps_run("${name}" "" "${mode}" version)
