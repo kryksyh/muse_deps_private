@@ -19,6 +19,6 @@ set(DEP_SOURCES
     "clang-linux-arm64|tarball|https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-aarch64-linux-gnu.tar.xz|dcaa1bebbfbb86953fdfbdc7f938800229f75ad26c5c9375ef242edad737d999"
 )
 
-set(DEP_PLATFORMS linux-x86_64 linux-aarch64 macos-aarch64 macos-x86_64 macos-universal windows-x86_64)
+set(DEP_PLATFORMS linux-x86_64 linux-aarch64 macos-aarch64 macos-x86_64 macos-universal windows-x86_64 windows-aarch64)
 
 set(DEP_LICENSE_FILES LICENSE)
