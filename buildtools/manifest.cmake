@@ -52,6 +52,16 @@ if (NOT DEFINED LIB_ARCH OR LIB_ARCH STREQUAL "")
     endif()
 endif()
 
+# dependency releases are RelWithDebInfo, debug app builds on windows require
+# Debug library builds, so they will be rebuilt
+if (NOT DEFINED EXTDEPS_BUILD_CONFIG OR EXTDEPS_BUILD_CONFIG STREQUAL "")
+    if (LIB_OS STREQUAL "windows" AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(EXTDEPS_BUILD_CONFIG "Debug")
+    else()
+        set(EXTDEPS_BUILD_CONFIG "RelWithDebInfo")
+    endif()
+endif()
+
 # Allow forcing the mode from the environment.
 # An explicit -D has priority.
 if (NOT DEFINED EXTDEPS_OVERRIDE_ALL AND DEFINED ENV{EXTDEPS_OVERRIDE_ALL})
@@ -94,7 +104,7 @@ function(_extdeps_run name mode)
 
     # resolve the dep: fetch the prebuilt or source, or bind the system package
     include("${EXTDEPS_DIR}/buildtools/resolve.cmake")
-    extdeps_resolve("${name}" "${version}" "${mode}" "${local_path}" "${LIB_OS}" "${LIB_ARCH}")
+    extdeps_resolve("${name}" "${version}" "${mode}" "${local_path}" "${LIB_OS}" "${LIB_ARCH}" "${EXTDEPS_BUILD_CONFIG}")
     set_property(GLOBAL PROPERTY ${name}_PREFIX "${local_path}")
     set_property(GLOBAL APPEND PROPERTY EXTDEPS_CONSUMED "${name}")
 endfunction()

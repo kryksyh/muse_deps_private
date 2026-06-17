@@ -97,7 +97,7 @@ endfunction()
 function(_bd_cmake_build srcdir)
     string(REPLACE "@RECIPE_DIR@" "${BD_RECIPE_DIR}" _dep_cmake_args "${DEP_CMAKE_ARGS}")
     set(_configure_args -S "${srcdir}" -B "${BUILD}" -G Ninja
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            -DCMAKE_BUILD_TYPE=${BD_CONFIG}
             -DCMAKE_INSTALL_PREFIX=${INSTALL}
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
             ${_dep_cmake_args})
@@ -128,7 +128,7 @@ function(_bd_cmake_build srcdir)
 
     # Run configure and build
     _bd_run(${CMAKE_COMMAND} ${_configure_args})
-    _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config RelWithDebInfo --target install --parallel)
+    _bd_run(${CMAKE_COMMAND} --build "${BUILD}" --config ${BD_CONFIG} --target install --parallel)
 endfunction()
 
 # Linux: ensure installed shared libs have their SONAME symlinks.
@@ -206,7 +206,11 @@ function(_bd_recipe_sig recipe_dir os arch out)
 endfunction()
 
 function(build_dep)
-    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;WORK;INSTALL_DIR;CACHE" "DEPENDS_PREFIXES" ${ARGN})
+    cmake_parse_arguments(BD "" "NAME;RECIPE_DIR;OS;ARCH;WORK;INSTALL_DIR;CACHE;CONFIG" "DEPENDS_PREFIXES" ${ARGN})
+
+    if(NOT BD_CONFIG)
+        set(BD_CONFIG "RelWithDebInfo")
+    endif()
 
     # Clear existing DEP_* variiables so recipes do not leak into each other
     get_cmake_property(_allvars VARIABLES)
@@ -229,6 +233,7 @@ function(build_dep)
 
     # Detect if there the recipe was alredy built
     _bd_recipe_sig("${BD_RECIPE_DIR}" "${BD_OS}" "${BD_ARCH}" _build_sig)
+    set(_build_sig "${_build_sig}|${BD_CONFIG}")
     set(_build_stamp "${BD_INSTALL_DIR}/.build_stamp")
     if(EXISTS "${_build_stamp}")
         file(READ "${_build_stamp}" _prev_sig)
